@@ -4,6 +4,63 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ---
 
+## 3.2.0
+
+Cuatro módulos nuevos: Axioma pasa de doce a **dieciséis**. Cubren lo que se
+estudia después del cálculo básico, que era el hueco más grande que quedaba.
+
+### Ecuaciones diferenciales
+
+Resuelve EDOs de cualquier orden, con la notación de clase (`y'`, `y''`) o la de
+Leibniz (`dy/dx`).
+
+- **Clasifica** el tipo: separable, lineal, exacta, homogénea, Bernoulli,
+  Euler-Cauchy, de coeficientes constantes…
+- Da la **solución general** o la **particular** si se indican condiciones
+  iniciales, y la **comprueba sustituyéndola** en la ecuación original.
+- **Campo de direcciones** en las de primer orden: cada flecha marca la
+  pendiente que tendría la solución al pasar por ese punto.
+- **Sistemas** de hasta cuatro ecuaciones y resolución por **transformada de
+  Laplace**.
+
+### Transformadas
+
+Laplace directa e inversa (con descomposición en fracciones simples), Fourier, y
+**series de Fourier** con los coeficientes aₙ y bₙ, la detección de simetría par
+o impar, y la gráfica que superpone la función con su serie truncada — donde se
+ve el fenómeno de Gibbs. Incluye la tabla de transformadas usuales.
+
+### Métodos numéricos
+
+Raíces (bisección, Newton-Raphson, secante), integración (trapecio, Simpson),
+interpolación (Lagrange, diferencias divididas) y EDOs (Euler, Runge-Kutta 4).
+
+Todos muestran la **tabla de iteraciones** y la gráfica de convergencia: ver cómo
+converge un método, o cómo no lo hace, es la mitad de lo que se estudia.
+
+### Ajuste de curvas
+
+Prueba los modelos lineal, cuadrático, cúbico, polinómico de grado n,
+exponencial, logarítmico y potencial; **compara su r² y recomienda el mejor**,
+listando aparte los que no se pueden aplicar y por qué.
+
+### Otros cambios
+
+- La navegación lateral se **agrupa por temas** (cálculo diario, álgebra,
+  análisis, datos y geometría): con dieciséis módulos, una lista plana se leía
+  mal y no cabía en pantalla.
+
+### Corregido
+
+- `analizar_datos` fallaba con decimales separados por comas y espacios
+  (`1.5, 2.5`), que es justo lo que sale al pegar una columna de una hoja de
+  cálculo. Ahora se distingue bien la coma decimal de la coma separadora.
+- En los paneles de EDOs y de ajuste se veían campos que no correspondían al
+  modo seleccionado: `currentIndexChanged` no se dispara al construir el panel
+  con el índice ya en 0.
+
+---
+
 ## 3.1.0
 
 ### Nuevo

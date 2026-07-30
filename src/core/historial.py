@@ -43,6 +43,10 @@ MODULOS = {
     "conversiones": "conversiones.json",
     "bases": "bases.json",
     "combinatoria": "combinatoria.json",
+    "edo": "edo.json",
+    "transformadas": "transformadas.json",
+    "numerico": "numerico.json",
+    "ajuste": "ajuste.json",
 }
 
 

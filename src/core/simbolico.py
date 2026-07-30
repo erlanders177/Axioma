@@ -66,7 +66,7 @@ _LLAMADA = re.compile(r"([A-Za-z_]\w*)\s*\(")
 _LONGITUD_MAXIMA = 500
 
 
-def _validar_texto(expresion: str) -> str:
+def _validar_texto(expresion: str, funciones_extra: frozenset | None = None) -> str:
     limpio = expresion.strip()
     if not limpio:
         raise ErrorSimbolico("Introduzca una expresión")
@@ -77,8 +77,9 @@ def _validar_texto(expresion: str) -> str:
     if _PROHIBIDO.search(limpio) or _ATRIBUTO.search(limpio):
         raise ErrorSimbolico("La expresión contiene elementos no permitidos")
 
+    permitidas = FUNCIONES_CONOCIDAS | (funciones_extra or frozenset())
     for nombre in _LLAMADA.findall(limpio):
-        if nombre not in FUNCIONES_CONOCIDAS:
+        if nombre not in permitidas:
             raise ErrorSimbolico(
                 f"Función desconocida: «{nombre}». "
                 f"Consulte el manual para ver las funciones disponibles."
@@ -86,15 +87,28 @@ def _validar_texto(expresion: str) -> str:
     return limpio
 
 
-def analizar(expresion: str) -> sp.Expr:
+def analizar(expresion: str, funciones_extra: frozenset | None = None,
+             locales: dict | None = None) -> sp.Expr:
     """Convierte texto en una expresión de sympy.
+
+    Args:
+        expresion: texto tal cual lo escribió el usuario.
+        funciones_extra: nombres adicionales que se aceptan además de la lista
+            blanca. Lo usan los módulos que necesitan construcciones propias,
+            como ``Derivative`` y ``y(x)`` en las ecuaciones diferenciales. La
+            lista base se mantiene estrecha a propósito.
+        locales: símbolos ya construidos que el analizador debe reconocer. Es
+            imprescindible al declarar funciones: sin decirle que ``y`` es una
+            función, la multiplicación implícita interpreta ``y(x)`` como
+            ``y·x``.
 
     >>> analizar("2x^2 - 4")
     2*x**2 - 4
     """
-    limpio = _validar_texto(expresion)
+    limpio = _validar_texto(expresion, funciones_extra)
     try:
-        resultado = parse_expr(limpio, transformations=TRANSFORMACIONES, evaluate=True)
+        resultado = parse_expr(limpio, transformations=TRANSFORMACIONES,
+                               local_dict=locales, evaluate=True)
     except (SyntaxError, TypeError, ValueError, AttributeError, RecursionError) as e:
         raise ErrorSimbolico(f"No se entiende la expresión: {e}") from e
 

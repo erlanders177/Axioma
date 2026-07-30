@@ -5,7 +5,7 @@
 # Axioma
 
 **Calculadora científica multifunción de escritorio.**
-Doce módulos en una sola ventana, en español, sin conexión a internet.
+Dieciséis módulos en una sola ventana, en español, sin conexión a internet.
 
 [![tests](https://github.com/erlanders177/Axioma/actions/workflows/tests.yml/badge.svg)](https://github.com/erlanders177/Axioma/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
@@ -20,19 +20,40 @@ Doce módulos en una sola ventana, en español, sin conexión a internet.
 
 ## Qué incluye
 
+### Cálculo diario
+
 | Módulo | Qué hace |
 |--------|----------|
-| **Calculadora** | Científica completa: trigonometría directa e inversa, hiperbólicas, logaritmos, factorial, memoria, grados/radianes/gradianes, variables propias y vista previa del resultado mientras se escribe. Además **opera con unidades**: `5 km + 300 m` da `5.3 km`. |
+| **Calculadora** | Científica completa: trigonometría directa e inversa, hiperbólicas, logaritmos, factorial, memoria, grados/radianes/gradianes, variables propias y vista previa mientras se escribe. Además **opera con unidades**: `5 km + 300 m` da `5.3 km`. |
 | **Gráficas** | Hasta cuatro funciones a la vez, con cortes, extremos y límites calculados automáticamente. Zoom, arrastre y exportación de la imagen. |
-| **Ecuaciones** | Ecuaciones **e inecuaciones** de una incógnita, **resueltas paso a paso**. Soluciones exactas y aproximadas, raíces complejas, factorización y gráfica con el conjunto solución sombreado. |
-| **Sistemas** | Hasta 10 ecuaciones lineales, con el **método de Gauss paso a paso**. Clasificación por Rouché-Frobenius, matriz ampliada, rangos y determinante. |
-| **Cálculo** | Derivadas e integrales **paso a paso, nombrando cada regla aplicada**. Integrales definidas, límites laterales, series de Taylor, extremos y análisis completo de funciones. |
-| **Matrices** | Determinante, inversa, pseudoinversa, rango, traza, potencias, Gauss-Jordan, autovalores y autovectores, diagonalización, núcleo, imagen, LU y resolución de A·x = b. |
-| **Estadística** | Descriptiva completa con detección de atípicos, tabla de frecuencias, regresión lineal y distribuciones normal, binomial y de Poisson. Histograma, diagrama de caja y ojiva. |
-| **Complejos** | Formas binómica, polar, trigonométrica y exponencial. Aritmética, De Moivre, raíces n-ésimas y plano de Argand. |
-| **Geometría** | **61 figuras**: 36 planas y 25 cuerpos, con vista previa 2D/3D y las fórmulas aplicadas. Incluye **cálculo inverso**: «el área vale 50, ¿cuánto mide el lado?». |
 | **Conversiones** | **51 magnitudes y 555 unidades**, con buscador y equivalencias simultáneas en toda la categoría. |
 | **Bases numéricas** | Bases 2 a 36 con signo, decimales y prefijos `0x`/`0b`/`0o`. Complemento a dos y operaciones bit a bit. |
+
+### Álgebra
+
+| Módulo | Qué hace |
+|--------|----------|
+| **Ecuaciones** | Ecuaciones **e inecuaciones** de una incógnita, **resueltas paso a paso**. Soluciones exactas y aproximadas, raíces complejas, factorización y gráfica con el conjunto solución sombreado. |
+| **Sistemas** | Hasta 10 ecuaciones lineales, con el **método de Gauss paso a paso**. Clasificación por Rouché-Frobenius, matriz ampliada, rangos y determinante. |
+| **Matrices** | Determinante, inversa, pseudoinversa, rango, traza, potencias, Gauss-Jordan, autovalores y autovectores, diagonalización, núcleo, imagen, LU y resolución de A·x = b. |
+| **Complejos** | Formas binómica, polar, trigonométrica y exponencial. Aritmética, De Moivre, raíces n-ésimas y plano de Argand. |
+
+### Análisis
+
+| Módulo | Qué hace |
+|--------|----------|
+| **Cálculo** | Derivadas e integrales **paso a paso, nombrando cada regla aplicada**. Integrales definidas, límites laterales, series de Taylor, extremos y análisis completo de funciones. |
+| **Ec. diferenciales** | EDOs de cualquier orden con notación `y'` o `dy/dx`. Clasifica el tipo, da la solución general o particular, **la comprueba sustituyéndola** y dibuja el **campo de direcciones**. También sistemas de EDOs y el método de Laplace. |
+| **Transformadas** | Laplace directa e inversa, Fourier, y **series de Fourier** con la gráfica que muestra cómo la serie se acerca a la función. Incluye la tabla de transformadas usuales. |
+| **Numérico** | Raíces (bisección, Newton-Raphson, secante), integración (trapecio, Simpson), interpolación (Lagrange, diferencias divididas) y EDOs (Euler, Runge-Kutta 4). Todo con la **tabla de iteraciones** y la gráfica de convergencia. |
+
+### Datos y geometría
+
+| Módulo | Qué hace |
+|--------|----------|
+| **Estadística** | Descriptiva completa con detección de atípicos, tabla de frecuencias, regresión lineal y distribuciones normal, binomial y de Poisson. Histograma, diagrama de caja y ojiva. |
+| **Ajuste de curvas** | Prueba los modelos lineal, cuadrático, cúbico, exponencial, logarítmico y potencial, **compara su r² y recomienda el mejor**. Con predicción y aviso cuando el ajuste se hace linealizando. |
+| **Geometría** | **61 figuras**: 36 planas y 25 cuerpos, con vista previa 2D/3D y las fórmulas aplicadas. Incluye **cálculo inverso**: «el área vale 50, ¿cuánto mide el lado?». |
 | **Combinatoria** | Factorial, combinaciones, permutaciones, variaciones, doble factorial, subfactorial, números de Catalan, función gamma y aproximación de Stirling. |
 
 Todos los módulos guardan su propio historial, con búsqueda, restauración con doble clic y exportación a CSV o TXT.
@@ -110,6 +131,14 @@ El resultado queda en `dist/Axioma.exe`.
 <td><img src="docs/capturas/estadistica.png" alt="Estadística"><br><sub><b>Estadística</b> — descriptiva e histograma</sub></td>
 </tr>
 <tr>
+<td><img src="docs/capturas/edo.png" alt="Ecuaciones diferenciales"><br><sub><b>Ec. diferenciales</b> — campo de direcciones</sub></td>
+<td><img src="docs/capturas/transformadas.png" alt="Transformadas"><br><sub><b>Transformadas</b> — serie de Fourier y su gráfica</sub></td>
+</tr>
+<tr>
+<td><img src="docs/capturas/numerico.png" alt="Métodos numéricos"><br><sub><b>Numérico</b> — tabla de iteraciones</sub></td>
+<td><img src="docs/capturas/ajuste.png" alt="Ajuste de curvas"><br><sub><b>Ajuste de curvas</b> — compara modelos y recomienda</sub></td>
+</tr>
+<tr>
 <td><img src="docs/capturas/conversiones_claro.png" alt="Conversiones"><br><sub><b>Conversiones</b> — 555 unidades (tema claro)</sub></td>
 <td><img src="docs/capturas/ecuaciones_claro.png" alt="Ecuaciones"><br><sub><b>Ecuaciones</b> — soluciones exactas y gráfica</sub></td>
 </tr>
@@ -123,7 +152,7 @@ Temas claro y oscuro, intercambiables con <kbd>Ctrl</kbd>+<kbd>T</kbd>.
 
 | Atajo | Acción |
 |-------|--------|
-| <kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>9</kbd> | Ir a un módulo |
+| <kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>9</kbd> | Ir a uno de los nueve primeros módulos |
 | <kbd>Ctrl</kbd>+<kbd>T</kbd> | Cambiar de tema |
 | <kbd>F1</kbd> | Abrir el manual |
 | <kbd>Intro</kbd> | Calcular en el módulo activo |
@@ -151,6 +180,10 @@ Axioma/
 │   │   ├── evaluador.py        evaluador de expresiones con lista blanca (AST)
 │   │   ├── simbolico.py        base común de sympy, con filtrado de entrada
 │   │   ├── calculo.py          derivadas, integrales, límites y series
+│   │   ├── edo.py              ecuaciones diferenciales
+│   │   ├── numerico.py         métodos aproximados
+│   │   ├── transformadas.py    Laplace y Fourier
+│   │   ├── ajuste.py           ajuste de curvas
 │   │   ├── pasos.py            resolución paso a paso
 │   │   ├── matrices.py         álgebra lineal
 │   │   ├── estadistica.py      descriptiva, regresión y distribuciones
@@ -173,7 +206,9 @@ Axioma/
 └── tests/
     ├── test_nucleo.py          lógica de cálculo
     ├── test_extras.py          unidades, geometría inversa y paso a paso
-    └── test_interfaz.py        los doce paneles, sin abrir ventana
+    ├── test_avanzado.py        EDOs, numérico, transformadas y ajuste
+    ├── test_empaquetado.py     comprobaciones sobre el .spec
+    └── test_interfaz.py        los dieciséis paneles, sin abrir ventana
 ```
 
 `src/core` no importa nada de PyQt: la lógica de cálculo se puede probar y
@@ -188,10 +223,12 @@ pip install pytest
 python -m pytest tests/ -q
 ```
 
-381 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
+478 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
 unidades, las 61 figuras contra resultados conocidos, entradas maliciosas
-bloqueadas en el evaluador, y los doce módulos de la interfaz ejercitados de
-extremo a extremo con la plataforma *offscreen* de Qt.
+bloqueadas en el evaluador, resultados de libro comprobados (la serie de Fourier
+de x, la precisión relativa de Euler frente a Runge-Kutta) y los dieciséis
+módulos de la interfaz ejercitados de extremo a extremo con la plataforma
+*offscreen* de Qt.
 
 Se ejecutan automáticamente en cada `push` sobre Windows y Linux, con Python
 3.10, 3.12 y 3.13.

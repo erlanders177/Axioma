@@ -63,7 +63,7 @@
 <main>
 
 <h1>Axioma</h1>
-<p class="lema">Calculadora científica multifunción · Manual de usuario · versión 3.1</p>
+<p class="lema">Calculadora científica multifunción · Manual de usuario · versión 3.2</p>
 
 <div class="indice">
   <strong>Contenido</strong>
@@ -74,8 +74,12 @@
     <li><a href="#ecuaciones">Ecuaciones e inecuaciones</a></li>
     <li><a href="#sistemas">Sistemas de ecuaciones</a></li>
     <li><a href="#calculo">Cálculo: derivadas, integrales y límites</a></li>
+    <li><a href="#edo">Ecuaciones diferenciales</a></li>
+    <li><a href="#transformadas">Transformadas de Laplace y Fourier</a></li>
+    <li><a href="#numerico">Métodos numéricos</a></li>
     <li><a href="#matrices">Matrices</a></li>
     <li><a href="#estadistica">Estadística</a></li>
+    <li><a href="#ajuste">Ajuste de curvas</a></li>
     <li><a href="#complejos">Números complejos</a></li>
     <li><a href="#geometria">Geometría</a></li>
     <li><a href="#conversiones">Conversiones de unidades</a></li>
@@ -89,7 +93,7 @@
 <!-- ==================================================================== -->
 <h2 id="general">1. Cómo se usa la aplicación</h2>
 <p>
-  Los doce módulos viven en una sola ventana. El menú de la izquierda cambia de
+  Los dieciséis módulos viven en una sola ventana, agrupados por temas en el menú lateral. El menú de la izquierda cambia de
   módulo; a la derecha de cada uno hay un historial que guarda automáticamente lo
   que va calculando.
 </p>
@@ -314,8 +318,67 @@
   resultado derivándolo.
 </p>
 
+
 <!-- ==================================================================== -->
-<h2 id="matrices">7. Matrices</h2>
+<h2 id="edo">7. Ecuaciones diferenciales</h2>
+<p>
+  Resuelve ecuaciones diferenciales ordinarias de cualquier orden. Escriba la
+  derivada con prima (<code>y'</code>, <code>y''</code>) o en notación de
+  Leibniz (<code>dy/dx</code>).
+</p>
+<table>
+  <tr><th>Modo</th><th>Qué hace</th></tr>
+  <tr><td>Solución exacta</td><td>Clasifica la ecuación (separable, lineal, exacta, Bernoulli…), la resuelve y <b>comprueba el resultado sustituyéndolo</b> en la ecuación original.</td></tr>
+  <tr><td>Método de Laplace</td><td>Transforma, despeja Y(s) y antitransforma. Necesita condiciones iniciales en 0.</td></tr>
+  <tr><td>Sistema de ecuaciones</td><td>Hasta cuatro ecuaciones de primer orden, una por línea: <code>x' = y</code> y <code>y' = -x</code>.</td></tr>
+  <tr><td>Aproximación</td><td>Runge-Kutta de orden 4, para las que no tienen solución exacta.</td></tr>
+</table>
+<p>
+  Si no pone condiciones iniciales obtiene la <b>solución general</b>, con sus
+  constantes C1, C2… Si las pone (<code>y(0) = 1, y'(0) = 0</code>), la
+  <b>solución particular</b>.
+</p>
+<div class="aviso">
+  En las ecuaciones de primer orden se dibuja el <strong>campo de
+  direcciones</strong>: cada flecha indica la pendiente que tendría la solución
+  al pasar por ese punto. Las curvas solución siguen esas flechas, y así se ve
+  el comportamiento aunque no se resuelva la ecuación.
+</div>
+
+<!-- ==================================================================== -->
+<h2 id="transformadas">8. Transformadas de Laplace y Fourier</h2>
+<table>
+  <tr><th>Operación</th><th>Qué obtiene</th></tr>
+  <tr><td>Laplace directa</td><td>F(s) = ∫₀^∞ f(t)·e^(−st) dt, con comprobación antitransformando.</td></tr>
+  <tr><td>Laplace inversa</td><td>Vuelve al dominio del tiempo, mostrando antes la descomposición en fracciones simples.</td></tr>
+  <tr><td>Fourier directa e inversa</td><td>Descompone una señal en sus frecuencias.</td></tr>
+  <tr><td>Serie de Fourier</td><td>Los coeficientes aₙ y bₙ, el desarrollo truncado, y la detección de simetría par o impar.</td></tr>
+  <tr><td>Tabla de Laplace</td><td>Los pares f(t) ↔ F(s) que se consultan constantemente.</td></tr>
+</table>
+<div class="aviso">
+  En la serie de Fourier, la gráfica superpone la función y su serie truncada.
+  Suba el orden para ver cómo se ajusta mejor, y observe en los saltos el
+  <strong>fenómeno de Gibbs</strong>: unos picos que no desaparecen por muchos
+  términos que se añadan.
+</div>
+
+<!-- ==================================================================== -->
+<h2 id="numerico">9. Métodos numéricos</h2>
+<p>
+  Lo que se usa cuando no hay solución exacta. Todos los métodos muestran la
+  <strong>tabla de iteraciones</strong>, no sólo el resultado: ver cómo converge
+  (o cómo no lo hace) es la mitad de lo que se estudia.
+</p>
+<table>
+  <tr><th>Grupo</th><th>Métodos</th></tr>
+  <tr><td>Raíces</td><td><b>Bisección</b>: siempre converge, pero despacio; necesita un intervalo donde f cambie de signo.<br><b>Newton-Raphson</b>: muy rápido cerca de la raíz, puede divergir si la derivada se anula.<br><b>Secante</b>: como Newton pero sin calcular la derivada.</td></tr>
+  <tr><td>Integración</td><td><b>Trapecio</b> y <b>Simpson</b>, comparados con el valor exacto cuando sympy sabe calcularlo.</td></tr>
+  <tr><td>Interpolación</td><td><b>Lagrange</b> y <b>diferencias divididas de Newton</b>: el polinomio que pasa exactamente por los puntos dados.</td></tr>
+  <tr><td>Ecuaciones diferenciales</td><td><b>Euler</b> (error del orden de h) y <b>Runge-Kutta 4</b> (del orden de h⁴).</td></tr>
+</table>
+
+<!-- ==================================================================== -->
+<h2 id="matrices">10. Matrices</h2>
 <p>
   Las matrices se escriben como texto: <b>una fila por línea</b>, con los
   elementos separados por espacios o comas. Se admiten fracciones y expresiones,
@@ -339,7 +402,7 @@
 </table>
 
 <!-- ==================================================================== -->
-<h2 id="estadistica">8. Estadística</h2>
+<h2 id="estadistica">11. Estadística</h2>
 <p>Tiene tres pestañas.</p>
 
 <h3>Datos</h3>
@@ -377,8 +440,37 @@
   <tr><td>Poisson P(λ)</td><td>Número de sucesos en un intervalo, con un ritmo medio λ.</td></tr>
 </table>
 
+
 <!-- ==================================================================== -->
-<h2 id="complejos">9. Números complejos</h2>
+<h2 id="ajuste">12. Ajuste de curvas</h2>
+<p>
+  A diferencia de la interpolación, la curva <b>no</b> pasa por todos los
+  puntos: se busca la que menos se aleja del conjunto. Es lo que se hace con
+  datos experimentales, que siempre traen error de medida.
+</p>
+<table>
+  <tr><th>Modelo</th><th>Forma</th></tr>
+  <tr><td>Lineal, cuadrático, cúbico</td><td>y = a·x + b, y = a·x² + b·x + c…</td></tr>
+  <tr><td>Polinómico de grado n</td><td>hasta grado 10</td></tr>
+  <tr><td>Exponencial</td><td>y = a·e^(b·x)</td></tr>
+  <tr><td>Logarítmico</td><td>y = a + b·ln x</td></tr>
+  <tr><td>Potencial</td><td>y = a·x^b</td></tr>
+</table>
+<p>
+  Con <em>Comparar todos y recomendar</em> se prueban todos, se ordenan por su
+  coeficiente r² y se señala el mejor. Los que no se pueden aplicar (por ejemplo
+  el logarítmico si hay X negativos) se listan aparte con el motivo.
+</p>
+<div class="aviso">
+  Los modelos exponencial y potencial se ajustan <strong>linealizando</strong>
+  (tomando logaritmos), que es el método clásico. Eso significa que minimizan el
+  error de la versión transformada, no el de la curva original; la aplicación lo
+  avisa. El r² que se muestra sí se calcula sobre los datos reales, para que la
+  comparación entre modelos sea justa.
+</div>
+
+<!-- ==================================================================== -->
+<h2 id="complejos">13. Números complejos</h2>
 <p>Se admiten estas formas de escritura:</p>
 <table>
   <tr><th>Forma</th><th>Ejemplos</th></tr>
@@ -399,7 +491,7 @@
 </p>
 
 <!-- ==================================================================== -->
-<h2 id="geometria">10. Geometría</h2>
+<h2 id="geometria">14. Geometría</h2>
 <p>
   61 figuras: 36 planas y 25 cuerpos en el espacio. Use el desplegable
   <em>Tipo</em> para filtrar por planas o cuerpos, y el campo <em>Filtrar
@@ -455,7 +547,7 @@
 </div>
 
 <!-- ==================================================================== -->
-<h2 id="conversiones">11. Conversiones de unidades</h2>
+<h2 id="conversiones">15. Conversiones de unidades</h2>
 <p>
   Hay 51 magnitudes con más de 550 unidades, agrupadas en nueve familias
   (básicas, mecánica, térmica, fluidos, electricidad y magnetismo, luz y
@@ -475,7 +567,7 @@
 </div>
 
 <!-- ==================================================================== -->
-<h2 id="bases">12. Bases numéricas</h2>
+<h2 id="bases">16. Bases numéricas</h2>
 <p>Convierte entre cualquier par de bases del 2 al 36. Acepta:</p>
 <ul>
   <li><strong>Signo negativo</strong>: <code>-1010</code> en binario es −10.</li>
@@ -504,7 +596,7 @@
 </div>
 
 <!-- ==================================================================== -->
-<h2 id="combinatoria">13. Combinatoria</h2>
+<h2 id="combinatoria">17. Combinatoria</h2>
 <table>
   <tr><th>Operación</th><th>Para qué sirve</th></tr>
   <tr><td>Factorial <code>n!</code></td><td>Producto 1·2·…·n. Exacto hasta 20 000; por encima se da la estimación y el número de dígitos.</td></tr>
@@ -520,7 +612,7 @@
 </table>
 
 <!-- ==================================================================== -->
-<h2 id="historial">14. El historial</h2>
+<h2 id="historial">18. El historial</h2>
 <p>Cada módulo guarda su propio historial, con estas opciones:</p>
 <ul>
   <li><strong>Buscar</strong>: filtra las operaciones según lo que escriba (sin distinguir tildes ni mayúsculas).</li>
@@ -532,7 +624,7 @@
 <p>Se conservan las 500 operaciones más recientes de cada módulo.</p>
 
 <!-- ==================================================================== -->
-<h2 id="datos">15. Dónde se guardan sus datos</h2>
+<h2 id="datos">19. Dónde se guardan sus datos</h2>
 <p>
   El historial, la configuración y el registro de errores se guardan en su perfil
   de usuario, no junto al programa:
@@ -550,7 +642,7 @@
 
 <footer>
   <p>
-    <strong>Axioma 3.1</strong> · calculadora científica multifunción<br>
+    <strong>Axioma 3.2</strong> · calculadora científica multifunción<br>
     Desarrollador: Aarón Aranda Torrijos (@erlanders177) —
     <a href="mailto:aaron.aranda.t@gmail.com">aaron.aranda.t@gmail.com</a><br>
     Proyecto: <a href="https://github.com/erlanders177/Axioma">github.com/erlanders177/Axioma</a><br>

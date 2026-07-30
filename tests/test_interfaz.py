@@ -19,6 +19,7 @@ os.environ.setdefault("XDG_DATA_HOME", os.environ["APPDATA"])
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest  # noqa: E402
+from PyQt5.QtCore import Qt  # noqa: E402
 from PyQt5.QtWidgets import QApplication, QMessageBox  # noqa: E402
 
 
@@ -42,9 +43,12 @@ def ventana(app):
     from src.ui.ventana_principal import MODULOS, VentanaPrincipal
     principal = VentanaPrincipal()
     principal.show()
-    # Al abrir cada módulo se construye su panel de forma diferida.
+    # Al abrir cada módulo se construye su panel de forma diferida. Se navega
+    # con `ir_a_modulo` y no con `setCurrentRow`, porque la lista lleva
+    # intercalados los encabezados de grupo y las filas ya no coinciden con los
+    # índices de MODULOS.
     for indice in range(len(MODULOS)):
-        principal.navegacion.setCurrentRow(indice)
+        principal.ir_a_modulo(indice)
     yield principal
     principal.close()
 
@@ -65,7 +69,28 @@ def panel(ventana, clave):
 
 def test_se_abren_todos_los_modulos(ventana):
     from src.ui.ventana_principal import MODULOS
-    assert len(ventana._paneles) == len(MODULOS) == 12
+    assert len(ventana._paneles) == len(MODULOS) == 16
+
+
+def test_los_encabezados_de_grupo_no_son_seleccionables(ventana):
+    """Pulsar un encabezado no debe cambiar de módulo ni romper nada."""
+    from src.ui.ventana_principal import GRUPOS_NAVEGACION
+
+    assert GRUPOS_NAVEGACION, "no hay grupos definidos"
+    filas_de_modulo = set(ventana._fila_de_modulo.values())
+    encabezados = [f for f in range(ventana.navegacion.count())
+                   if f not in filas_de_modulo]
+    assert len(encabezados) == len(GRUPOS_NAVEGACION)
+    for fila in encabezados:
+        assert not (ventana.navegacion.item(fila).flags() & Qt.ItemIsSelectable)
+
+
+def test_ir_a_modulo_traduce_bien_los_indices(ventana):
+    from src.ui.ventana_principal import MODULOS
+
+    for indice, (clave, _, titulo, _, _) in enumerate(MODULOS):
+        ventana.ir_a_modulo(indice)
+        assert ventana.titulo_modulo.text().endswith(titulo), clave
 
 
 def test_cambio_de_tema_no_rompe_ningun_panel(ventana):
@@ -823,6 +848,190 @@ def test_pasos_en_sistemas(ventana):
     salida = _resolver_sistema(ventana, ["2x + 3y = 7", "x - y = 1"])
     assert "método de Gauss" in salida
     assert "matriz ampliada" in salida
+
+
+# --------------------------------------------------------------------------- #
+# Ecuaciones diferenciales
+# --------------------------------------------------------------------------- #
+
+def _filas(tabla) -> dict:
+    return {tabla.item(f, 0).text(): tabla.item(f, 1).text()
+            for f in range(tabla.rowCount())
+            if tabla.item(f, 0) and tabla.item(f, 1)}
+
+
+def test_edo_resuelve(ventana):
+    pan = panel(ventana, "edo")
+    pan.combo_modo.setCurrentIndex(0)
+    pan.entrada.setText("y' + 2y = 0")
+    pan.condiciones.clear()
+    pan.resolver()
+    assert "exp(-2*x)" in _filas(pan.tabla)["Solución general"]
+
+
+def test_edo_con_condiciones_iniciales(ventana):
+    pan = panel(ventana, "edo")
+    pan.combo_modo.setCurrentIndex(0)
+    pan.entrada.setText("y' = x*y")
+    pan.condiciones.setText("y(0) = 1")
+    pan.resolver()
+    assert "exp(x**2/2)" in _filas(pan.tabla)["Solución particular"]
+
+
+def test_edo_sistema(ventana):
+    pan = panel(ventana, "edo")
+    pan.combo_modo.setCurrentIndex(2)
+    pan.sistema.setPlainText("x' = y\ny' = -x")
+    pan.var_independiente.setText("t")
+    pan.resolver()
+    assert pan.tabla.rowCount() > 0
+
+
+def test_edo_numerica(ventana):
+    pan = panel(ventana, "edo")
+    pan.combo_modo.setCurrentIndex(3)
+    pan.campo_fxy.setText("y")
+    pan.campo_x0.setText("0")
+    pan.campo_y0.setText("1")
+    pan.campo_h.setText("0.1")
+    pan.spin_pasos.setValue(10)
+    pan.resolver()
+    assert pan.tabla.rowCount() > 0
+
+
+def test_edo_avisa_si_no_hay_derivada(ventana):
+    pan = panel(ventana, "edo")
+    pan.combo_modo.setCurrentIndex(0)
+    pan.entrada.setText("x + 1 = 0")
+    pan.resolver()
+    assert _DIALOGOS
+
+
+# --------------------------------------------------------------------------- #
+# Métodos numéricos
+# --------------------------------------------------------------------------- #
+
+def _numerico(ventana, clave, valores=None):
+    pan = panel(ventana, "numerico")
+    claves = [c for c, _, _ in pan._catalogo()]
+    pan.combo.setCurrentIndex(claves.index(clave))
+    for nombre, valor in (valores or {}).items():
+        widget = pan._campos.get(nombre)
+        if widget is None:
+            continue
+        if hasattr(widget, "setValue"):
+            widget.setValue(int(valor))
+        else:
+            widget.setText(str(valor))
+    pan.calcular()
+    return pan
+
+
+def test_numerico_biseccion(ventana):
+    pan = _numerico(ventana, "biseccion", {"expresion": "x^2 - 2", "a": "0", "b": "2"})
+    assert "1.4142" in pan.resultado.text()
+    assert pan.tabla.rowCount() > 0
+
+
+def test_numerico_newton(ventana):
+    pan = _numerico(ventana, "newton", {"expresion": "x^2 - 2", "x0": "1"})
+    assert "1.4142" in pan.resultado.text()
+
+
+def test_numerico_simpson(ventana):
+    pan = _numerico(ventana, "simpson", {"expresion": "x^2", "a": "0", "b": "3", "n": 100})
+    assert "9" in pan.resultado.text()
+    assert "valor exacto" in pan.detalle.text()
+
+
+def test_numerico_interpolacion(ventana):
+    pan = panel(ventana, "numerico")
+    claves = [c for c, _, _ in pan._catalogo()]
+    pan.combo.setCurrentIndex(claves.index("lagrange"))
+    pan.puntos.setPlainText("0, 1\n1, 3\n2, 7")
+    pan.calcular()
+    assert "x**2" in pan.resultado.text()
+
+
+def test_numerico_rk4(ventana):
+    pan = _numerico(ventana, "rk4", {"fxy": "y", "x0": "0", "y0": "1",
+                                     "h": "0.1", "pasos": 10})
+    assert "2.718" in pan.resultado.text()
+
+
+def test_numerico_avisa_sin_cambio_de_signo(ventana):
+    _numerico(ventana, "biseccion", {"expresion": "x^2 + 1", "a": "0", "b": "2"})
+    assert _DIALOGOS
+
+
+# --------------------------------------------------------------------------- #
+# Transformadas
+# --------------------------------------------------------------------------- #
+
+def _transformada(ventana, clave, expresion=""):
+    from src.core import transformadas as tr
+
+    pan = panel(ventana, "transformadas")
+    claves = [c for c, _, _ in tr.OPERACIONES]
+    pan.combo.setCurrentIndex(claves.index(clave))
+    if expresion:
+        pan.entrada.setText(expresion)
+    pan.calcular()
+    return pan
+
+
+def test_laplace_en_el_panel(ventana):
+    pan = _transformada(ventana, "laplace", "t^2")
+    assert "2/s**3" in _filas(pan.tabla)["Transformada"]
+
+
+def test_laplace_inversa_en_el_panel(ventana):
+    pan = _transformada(ventana, "laplace_inversa", "1/(s-2)")
+    assert "exp(2*t)" in _filas(pan.tabla)["Transformada inversa"]
+
+
+def test_serie_de_fourier_en_el_panel(ventana):
+    pan = _transformada(ventana, "serie", "x")
+    assert any("Serie truncada" in k for k in _filas(pan.tabla))
+
+
+def test_tabla_de_laplace_en_el_panel(ventana):
+    pan = _transformada(ventana, "tabla")
+    assert pan.tabla.rowCount() >= 10
+
+
+# --------------------------------------------------------------------------- #
+# Ajuste de curvas
+# --------------------------------------------------------------------------- #
+
+def test_ajuste_compara_modelos(ventana):
+    import math
+
+    pan = panel(ventana, "ajuste")
+    xs = [0, 1, 2, 3, 4, 5]
+    pan.datos_x.setPlainText(", ".join(str(v) for v in xs))
+    pan.datos_y.setPlainText(", ".join(f"{2 * math.exp(0.5 * v):.6f}" for v in xs))
+    pan.combo.setCurrentIndex(0)          # comparar todos
+    pan.calcular()
+    assert pan._ajustes and pan._ajustes[0].clave == "exponencial"
+
+
+def test_ajuste_modelo_concreto(ventana):
+    pan = panel(ventana, "ajuste")
+    pan.datos_x.setPlainText("1, 2, 3, 4")
+    pan.datos_y.setPlainText("3, 5, 7, 9")
+    indice = pan.combo.findData("poli1")
+    pan.combo.setCurrentIndex(indice)
+    pan.calcular()
+    assert pan._ajustes[0].r2 == pytest.approx(1.0)
+
+
+def test_ajuste_avisa_si_las_series_no_casan(ventana):
+    pan = panel(ventana, "ajuste")
+    pan.datos_x.setPlainText("1, 2, 3")
+    pan.datos_y.setPlainText("1, 2")
+    pan.calcular()
+    assert _DIALOGOS
 
 
 # --------------------------------------------------------------------------- #

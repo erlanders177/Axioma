@@ -40,13 +40,24 @@ def analizar_datos(texto: str, nombre: str = "los datos") -> list[float]:
     if not limpio:
         raise ErrorEstadistica(f"Introduzca {nombre}")
 
-    # Si hay comas Y algún separador claro, las comas separan elementos.
-    # Si sólo hay comas y cada trozo tiene una, se interpretan como decimales.
-    trozos = limpio.replace(";", " ").replace("\n", " ").replace("\t", " ")
-    if "," in trozos and not any(c.isspace() for c in trozos.strip()):
-        partes = [p for p in trozos.split(",") if p.strip()]
+    # La coma es ambigua en castellano: puede separar elementos («1, 2, 3») o
+    # ser el separador decimal («1,5»). Se decide así:
+    normalizado = limpio.replace(";", " ").replace("\n", " ").replace("\t", " ")
+
+    if "." in normalizado:
+        # Hay puntos, así que los decimales usan punto y las comas separan.
+        partes = [p for p in normalizado.replace(",", " ").split() if p]
     else:
-        partes = [p for p in trozos.replace(",", ".").split() if p.strip()]
+        tokens = [t for t in normalizado.split() if t]
+        decimal = bool(tokens) and all(
+            t.count(",") == 1 and not t.startswith(",") and not t.endswith(",")
+            for t in tokens
+        )
+        if decimal:
+            # «1,5  2,5» — cada elemento lleva exactamente una coma interior.
+            partes = [t.replace(",", ".") for t in tokens]
+        else:
+            partes = [p for p in normalizado.replace(",", " ").split() if p]
 
     valores: list[float] = []
     for parte in partes:

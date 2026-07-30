@@ -25,6 +25,7 @@ from ..core.config import config
 from ..core.rutas import dir_datos, recurso
 from . import tema
 from .comunes import boton, etiqueta
+from .panel_ajuste import PanelAjuste
 from .panel_bases import PanelBases
 from .panel_calculadora import PanelCalculadora
 from .panel_calculo import PanelCalculo
@@ -32,28 +33,47 @@ from .panel_combinatoria import PanelCombinatoria
 from .panel_complejos import PanelComplejos
 from .panel_conversiones import PanelConversiones
 from .panel_ecuaciones import PanelEcuaciones
+from .panel_edo import PanelEDO
 from .panel_estadistica import PanelEstadistica
 from .panel_geometria import PanelGeometria
 from .panel_graficador import PanelGraficador
 from .panel_matrices import PanelMatrices
+from .panel_numerico import PanelNumerico
 from .panel_sistemas import PanelSistemas
+from .panel_transformadas import PanelTransformadas
 
 #: (clave, icono, título, descripción corta, clase del panel)
 #: Los iconos son símbolos de texto, no emoji: los emoji se dibujan en blanco y
 #: negro en la fuente de sistema de Windows y quedan irreconocibles.
 MODULOS: list[tuple[str, str, str, str, type]] = [
-    ("calculadora", "π", "Calculadora", "Científica, con variables e historial", PanelCalculadora),
+    ("calculadora", "π", "Calculadora", "Científica, con variables y unidades", PanelCalculadora),
     ("graficador", "∿", "Gráficas", "Representar funciones de x", PanelGraficador),
+    ("conversiones", "⇄", "Conversiones", "51 magnitudes, 555 unidades", PanelConversiones),
+    ("bases", "01", "Bases numéricas", "Binario, hexadecimal y bits", PanelBases),
+
     ("ecuaciones", "ƒ", "Ecuaciones", "Ecuaciones e inecuaciones", PanelEcuaciones),
     ("sistemas", "≡", "Sistemas", "Ecuaciones lineales", PanelSistemas),
-    ("calculo", "∫", "Cálculo", "Derivadas, integrales y límites", PanelCalculo),
     ("matrices", "⊞", "Matrices", "Álgebra lineal", PanelMatrices),
-    ("estadistica", "μ", "Estadística", "Descriptiva, regresión y probabilidad", PanelEstadistica),
     ("complejos", "ι", "Complejos", "Aritmética y plano de Argand", PanelComplejos),
-    ("geometria", "△", "Geometría", "Figuras planas y cuerpos", PanelGeometria),
-    ("conversiones", "⇄", "Conversiones", "Unidades de todo tipo", PanelConversiones),
-    ("bases", "01", "Bases numéricas", "Binario, hexadecimal y bits", PanelBases),
+
+    ("calculo", "∫", "Cálculo", "Derivadas, integrales y límites", PanelCalculo),
+    ("edo", "∂", "Ec. diferenciales", "EDOs y campo de direcciones", PanelEDO),
+    ("transformadas", "ℒ", "Transformadas", "Laplace y Fourier", PanelTransformadas),
+    ("numerico", "≈", "Numérico", "Métodos aproximados", PanelNumerico),
+
+    ("estadistica", "μ", "Estadística", "Descriptiva y probabilidad", PanelEstadistica),
+    ("ajuste", "⌒", "Ajuste de curvas", "Qué modelo describe los datos", PanelAjuste),
+    ("geometria", "△", "Geometría", "61 figuras, planas y cuerpos", PanelGeometria),
     ("combinatoria", "n!", "Combinatoria", "Factorial, C(n,r), P(n,r)", PanelCombinatoria),
+]
+
+#: Encabezados de la navegación: (índice donde empieza, título del grupo).
+#: Con dieciséis módulos una lista plana se lee mal y no cabe sin desplazar.
+GRUPOS_NAVEGACION: list[tuple[int, str]] = [
+    (0, "Cálculo diario"),
+    (4, "Álgebra"),
+    (8, "Análisis"),
+    (12, "Datos y geometría"),
 ]
 
 
@@ -73,7 +93,7 @@ class VentanaPrincipal(QMainWindow):
 
         inicial = config["modulo_inicial"]
         claves = [m[0] for m in MODULOS]
-        self.navegacion.setCurrentRow(claves.index(inicial) if inicial in claves else 0)
+        self.ir_a_modulo(claves.index(inicial) if inicial in claves else 0)
 
     # ------------------------------------------------------------------ UI -- #
 
@@ -132,11 +152,30 @@ class VentanaPrincipal(QMainWindow):
         self.navegacion.setSelectionMode(QAbstractItemView.SingleSelection)
         self.navegacion.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.navegacion.setIconSize(QSize(1, 1))
-        for _, icono, titulo_mod, descripcion, _ in MODULOS:
+
+        # Los encabezados de grupo son elementos no seleccionables intercalados,
+        # así que la fila de la lista deja de coincidir con el índice del módulo.
+        self._fila_de_modulo: dict[int, int] = {}
+        self._modulo_de_fila: dict[int, int] = {}
+        encabezados = dict(GRUPOS_NAVEGACION)
+
+        for indice, (_, icono, titulo_mod, descripcion, _) in enumerate(MODULOS):
+            if indice in encabezados:
+                cabecera = QListWidgetItem(encabezados[indice].upper())
+                cabecera.setFlags(Qt.NoItemFlags)
+                fuente = cabecera.font()
+                fuente.setPointSizeF(max(7.5, fuente.pointSizeF() - 2))
+                fuente.setBold(True)
+                cabecera.setFont(fuente)
+                self.navegacion.addItem(cabecera)
+
             elemento = QListWidgetItem(f"{icono.ljust(2)}   {titulo_mod}")
             elemento.setToolTip(descripcion)
+            self._fila_de_modulo[indice] = self.navegacion.count()
+            self._modulo_de_fila[self.navegacion.count()] = indice
             self.navegacion.addItem(elemento)
-        self.navegacion.currentRowChanged.connect(self._cambiar_modulo)
+
+        self.navegacion.currentRowChanged.connect(self._fila_seleccionada)
         columna.addWidget(self.navegacion, 1)
 
         pie = QWidget()
@@ -176,10 +215,22 @@ class VentanaPrincipal(QMainWindow):
         for indice in range(min(9, len(MODULOS))):
             QShortcut(
                 QKeySequence(f"Ctrl+{indice + 1}"), self,
-                lambda i=indice: self.navegacion.setCurrentRow(i),
+                lambda i=indice: self.ir_a_modulo(i),
             )
 
     # -------------------------------------------------------------- lógica -- #
+
+    def _fila_seleccionada(self, fila: int) -> None:
+        """Traduce la fila de la lista (que incluye encabezados) al módulo."""
+        indice = self._modulo_de_fila.get(fila)
+        if indice is not None:
+            self._cambiar_modulo(indice)
+
+    def ir_a_modulo(self, indice: int) -> None:
+        """Selecciona un módulo por su posición en ``MODULOS``."""
+        fila = self._fila_de_modulo.get(indice)
+        if fila is not None:
+            self.navegacion.setCurrentRow(fila)
 
     def _cambiar_modulo(self, indice: int) -> None:
         if not 0 <= indice < len(MODULOS):

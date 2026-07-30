@@ -364,10 +364,21 @@ def test_matriz_admite_fracciones_y_raices():
 # Estadística
 # --------------------------------------------------------------------------- #
 
-def test_datos_admiten_varios_separadores():
-    assert estadistica.analizar_datos("1 2 3") == [1, 2, 3]
-    assert estadistica.analizar_datos("1,2,3") == [1, 2, 3]
-    assert estadistica.analizar_datos("1\n2\n3") == [1, 2, 3]
+@pytest.mark.parametrize("texto,esperado", [
+    ("1 2 3", [1, 2, 3]),
+    ("1,2,3", [1, 2, 3]),
+    ("1\n2\n3", [1, 2, 3]),
+    ("1;2;3", [1, 2, 3]),
+    # Decimales con punto y comas separadoras: es lo que sale al pegar una
+    # columna de una hoja de cálculo, y antes fallaba.
+    ("1.5, 2.5, 3.5", [1.5, 2.5, 3.5]),
+    ("2.000000, 3.297443", [2.0, 3.297443]),
+    ("1.5 2.5", [1.5, 2.5]),
+    # Coma decimal a la española, sin ningún punto de por medio.
+    ("1,5 2,5 3,5", [1.5, 2.5, 3.5]),
+])
+def test_datos_admiten_varios_separadores(texto, esperado):
+    assert estadistica.analizar_datos(texto) == pytest.approx(esperado)
 
 
 def test_datos_rechazan_texto():
