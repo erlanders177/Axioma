@@ -45,6 +45,8 @@ jobs:
       - name: Ejecutar las pruebas
         env:
           QT_QPA_PLATFORM: offscreen
+          # El entorno de CI puede traer plugins de pytest ajenos al proyecto.
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
         run: python -m pytest tests/ -q
 
   estilo:

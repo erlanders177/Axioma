@@ -1,0 +1,102 @@
+# Historial de cambios
+
+Las versiones siguen [SemVer](https://semver.org/lang/es/).
+
+---
+
+## 3.1.0
+
+### Nuevo
+
+**Resolución paso a paso.** Ya no sólo se da el resultado: se explica cómo se
+llega a él.
+
+- **Derivadas**: se recorre el árbol de la expresión nombrando la regla aplicada
+  en cada nodo (producto, cadena, potencia, constante por función, derivada de
+  cada función elemental).
+- **Integrales**: se indica el método empleado (cambio de variable, integración
+  por partes, reescritura previa) y se comprueba el resultado derivándolo.
+- **Ecuaciones**: despeje razonado en las de primer grado; factorización,
+  discriminante con su interpretación y fórmula en las de segundo. Se comprueba
+  la solución sustituyéndola.
+- **Sistemas**: método de Gauss con cada operación sobre las filas y la matriz
+  redibujada después de cada paso.
+
+**Aritmética con unidades en la calculadora.** `5 km + 300 m` da `5.3 km`, y
+`20 °C a °F` da `68 °F`. Admite sumas y restas de la misma magnitud, producto y
+división por un número, división entre magnitudes iguales, y conversión
+explícita con `a`, `en`, `in`, `to` o `→`.
+
+**Cálculo geométrico inverso.** «Sé que el área vale 50, ¿cuánto mide el lado?».
+Disponible en las figuras cuyos datos son continuos.
+
+**Historial con las flechas del teclado.** <kbd>↑</kbd> y <kbd>↓</kbd> recorren
+las expresiones ya calculadas, como en una terminal.
+
+**Distribución.**
+
+- Icono propio, en la ventana, la barra de tareas y el ejecutable.
+- Integración continua: las pruebas se ejecutan en Windows y Linux con Python
+  3.10, 3.12 y 3.13.
+- Ejecutable para Windows en la sección de *Releases*.
+
+### Corregido
+
+- La pestaña «Paso a paso» salía con el texto recortado: Qt calculaba el ancho
+  sin tener en cuenta el relleno definido en la hoja de estilos.
+- El ejecutable pesaba 343 MB porque PyInstaller arrastraba torch, scipy,
+  transformers y otras bibliotecas que Axioma no usa, presentes en el entorno de
+  desarrollo. Ahora se excluyen explícitamente.
+
+### Notas
+
+La aritmética con unidades **no** crea unidades derivadas (`10 km / 2 h`) ni suma
+escalas afines de temperatura (`20 °C + 5 °C`), porque lo primero exigiría un
+motor de análisis dimensional y lo segundo no significa nada. En ambos casos se
+explica el motivo en lugar de dar un número incorrecto.
+
+---
+
+## 3.0.0
+
+Reescritura completa. La aplicación pasa de siete ventanas sueltas a una sola
+ventana con doce módulos, y la lógica de cálculo (`src/core`) queda separada de
+la interfaz (`src/ui`), sin depender de PyQt.
+
+### Módulos nuevos
+
+Gráficas de funciones, cálculo (derivadas, integrales, límites, series),
+matrices y álgebra lineal, estadística y distribuciones, y números complejos.
+
+### Ampliaciones
+
+- **Conversiones**: de 3 disciplinas y 15 magnitudes a **51 magnitudes y 555
+  unidades**, con buscador y equivalencias simultáneas.
+- **Geometría**: de 6 figuras a **61** (36 planas y 25 cuerpos), con vista previa
+  2D y 3D embebida y las fórmulas aplicadas a la vista.
+- **Calculadora**: trigonometría directa e inversa, hiperbólicas, logaritmos,
+  memoria, modos DEG/RAD/GRAD, variables propias y vista previa del resultado.
+- **Ecuaciones**: detección automática de la incógnita, sintaxis relajada,
+  soluciones exactas, descarte de raíces espurias y gráfica.
+- **Sistemas**: hasta 10 ecuaciones, clasificación por Rouché-Frobenius.
+- **Bases**: negativos, decimales, prefijos `0x`/`0b`/`0o` y complemento a dos.
+- **Combinatoria**: además del factorial, combinaciones, permutaciones,
+  variaciones, doble factorial, subfactorial, Catalan, gamma y Stirling.
+- Temas claro y oscuro, e historial con búsqueda y exportación a CSV/TXT.
+
+### Corregido (respecto a la versión 1)
+
+| Dónde | Problema |
+|-------|----------|
+| Conversiones | Se multiplicaba por la razón invertida: 1 km daba 0,001 m. Afectaba a **todas** las magnitudes. |
+| Conversiones | La temperatura sólo funcionaba si uno de los extremos era kelvin. |
+| Conversiones | La unidad `g/L` estaba definida como diccionario y fallaba siempre. |
+| Calculadora | Usaba `eval()` sobre la entrada del usuario: ejecutaba código arbitrario. |
+| Historial | Borraba por posición en la lista, no por identidad: con la lista filtrada eliminaba la entrada equivocada. |
+| Historial | Escritura no atómica; se guardaba junto al ejecutable en lugar del perfil del usuario. |
+| Ecuaciones | `UnboundLocalError` cuando no había soluciones; las raíces complejas hacían fallar el cálculo. |
+| Sistemas | El parser manual daba signos incorrectos y no admitía incógnitas a la derecha, fracciones ni sistemas no cuadrados. |
+| Geometría | No validaba valores negativos ni campos vacíos. |
+| Bases | No admitía signo negativo ni parte fraccionaria. |
+| Combinatoria | Volcaba enteros de miles de dígitos en una etiqueta, estirando la ventana. |
+| Varios | El visualizador de figuras era código muerto que escribía un PNG en el directorio de trabajo. |
