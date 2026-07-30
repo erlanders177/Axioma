@@ -1,0 +1,27 @@
+# Artefactos de compilación de PyInstaller (cientos de MB: nunca deben subirse)
+build/
+dist/
+*.spec.bak
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.benchmarks/
+
+# Datos y registros generados en tiempo de ejecución
+*.log
+historial_data/
+config.json
+
+# Editores y sistema operativo
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store

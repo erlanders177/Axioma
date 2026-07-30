@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manual de usuario · Axioma</title>
+<style>
+  :root {
+    --fondo: #ffffff; --texto: #1c2333; --suave: #5d6880;
+    --acento: #2f6fed; --borde: #d8dee9; --codigo: #f2f4f8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fondo: #12161f; --texto: #e8ecf4; --suave: #95a1bb;
+      --acento: #6ba1ff; --borde: #333d54; --codigo: #1a2030;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    line-height: 1.65; margin: 0; padding: 2rem 1.25rem 5rem;
+    background: var(--fondo); color: var(--texto);
+  }
+  main { max-width: 880px; margin: 0 auto; }
+  h1 { font-size: 2.2rem; margin: 0 0 .25rem; letter-spacing: 1px; }
+  h2 {
+    font-size: 1.35rem; margin: 2.75rem 0 .75rem;
+    padding-bottom: .35rem; border-bottom: 1px solid var(--borde);
+  }
+  h3 { font-size: 1.05rem; margin: 1.5rem 0 .4rem; color: var(--acento); }
+  .lema { color: var(--suave); margin: 0 0 2rem; }
+  code, kbd {
+    background: var(--codigo); border: 1px solid var(--borde);
+    border-radius: 4px; padding: .1em .4em;
+    font-family: Consolas, "DejaVu Sans Mono", monospace; font-size: .9em;
+  }
+  kbd { box-shadow: 0 1px 0 var(--borde); }
+  pre {
+    background: var(--codigo); border: 1px solid var(--borde);
+    border-radius: 6px; padding: .8rem 1rem; overflow-x: auto;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: .75rem 0; }
+  th, td {
+    border: 1px solid var(--borde); padding: .5rem .7rem;
+    text-align: left; vertical-align: top;
+  }
+  th { background: var(--codigo); font-weight: 600; }
+  ul, ol { padding-left: 1.4rem; }
+  li { margin: .25rem 0; }
+  .aviso {
+    background: var(--codigo); border-left: 3px solid var(--acento);
+    padding: .75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0;
+  }
+  .indice { background: var(--codigo); border: 1px solid var(--borde);
+            border-radius: 8px; padding: 1rem 1rem 1rem 2.2rem; }
+  a { color: var(--acento); }
+  footer { margin-top: 4rem; color: var(--suave); font-size: .9rem;
+           border-top: 1px solid var(--borde); padding-top: 1rem; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Axioma</h1>
+<p class="lema">Calculadora científica multifunción · Manual de usuario · versión 3.0</p>
+
+<div class="indice">
+  <strong>Contenido</strong>
+  <ol>
+    <li><a href="#general">Cómo se usa la aplicación</a></li>
+    <li><a href="#calculadora">Calculadora científica</a></li>
+    <li><a href="#graficas">Gráficas de funciones</a></li>
+    <li><a href="#ecuaciones">Ecuaciones e inecuaciones</a></li>
+    <li><a href="#sistemas">Sistemas de ecuaciones</a></li>
+    <li><a href="#calculo">Cálculo: derivadas, integrales y límites</a></li>
+    <li><a href="#matrices">Matrices</a></li>
+    <li><a href="#estadistica">Estadística</a></li>
+    <li><a href="#complejos">Números complejos</a></li>
+    <li><a href="#geometria">Geometría</a></li>
+    <li><a href="#conversiones">Conversiones de unidades</a></li>
+    <li><a href="#bases">Bases numéricas</a></li>
+    <li><a href="#combinatoria">Combinatoria</a></li>
+    <li><a href="#historial">El historial</a></li>
+    <li><a href="#datos">Dónde se guardan sus datos</a></li>
+  </ol>
+</div>
+
+<!-- ==================================================================== -->
+<h2 id="general">1. Cómo se usa la aplicación</h2>
+<p>
+  Los doce módulos viven en una sola ventana. El menú de la izquierda cambia de
+  módulo; a la derecha de cada uno hay un historial que guarda automáticamente lo
+  que va calculando.
+</p>
+
+<h3>Cómo escribir las expresiones</h3>
+<p>
+  En todos los módulos matemáticos se admite la notación de clase, no sólo la de
+  Python:
+</p>
+<ul>
+  <li><code>x^2</code> equivale a <code>x**2</code></li>
+  <li><code>2x</code> equivale a <code>2*x</code>, y <code>2(x+1)</code> a <code>2*(x+1)</code></li>
+  <li>Constantes: <code>pi</code> (o <code>π</code>), <code>e</code>, <code>tau</code>, <code>phi</code></li>
+  <li>Funciones: <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>exp</code>, <code>log</code>, <code>sqrt</code>, <code>abs</code>…</li>
+</ul>
+
+<h3>Atajos de teclado</h3>
+<table>
+  <tr><th>Atajo</th><th>Acción</th></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>1</kbd> … <kbd>Ctrl</kbd>+<kbd>9</kbd></td><td>Ir directamente a un módulo</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>T</kbd></td><td>Cambiar entre tema claro y oscuro</td></tr>
+  <tr><td><kbd>F1</kbd></td><td>Abrir este manual</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>Q</kbd></td><td>Cerrar la aplicación</td></tr>
+  <tr><td><kbd>Intro</kbd></td><td>Calcular / resolver en el módulo activo</td></tr>
+  <tr><td><kbd>Esc</kbd></td><td>Limpiar la pantalla de la calculadora</td></tr>
+</table>
+
+<!-- ==================================================================== -->
+<h2 id="calculadora">2. Calculadora científica</h2>
+<p>
+  Puede pulsar los botones o <strong>escribir directamente con el teclado</strong>.
+  Mientras escribe, debajo de la pantalla aparece el resultado provisional; los
+  paréntesis que falten se cierran solos para la vista previa.
+</p>
+
+<h3>Qué puede escribir</h3>
+<table>
+  <tr><th>Elemento</th><th>Ejemplos</th></tr>
+  <tr><td>Operadores</td><td><code>+ − * /</code>, <code>^</code> o <code>**</code> para potencias, <code>//</code> división entera</td></tr>
+  <tr><td>Trigonometría</td><td><code>sin</code>, <code>cos</code>, <code>tan</code>, <code>sec</code>, <code>csc</code>, <code>cot</code> y sus inversas <code>asin</code>, <code>acos</code>, <code>atan</code>, <code>atan2</code></td></tr>
+  <tr><td>Hiperbólicas</td><td><code>sinh</code>, <code>cosh</code>, <code>tanh</code>, <code>asinh</code>, <code>acosh</code>, <code>atanh</code></td></tr>
+  <tr><td>Logaritmos</td><td><code>ln(x)</code>, <code>log10(x)</code>, <code>log2(x)</code>, <code>log(x, base)</code>, <code>exp(x)</code></td></tr>
+  <tr><td>Raíces</td><td><code>sqrt(x)</code>, <code>cbrt(x)</code>, <code>raiz(x, n)</code>, o el símbolo <code>√</code></td></tr>
+  <tr><td>Redondeo</td><td><code>floor</code>, <code>ceil</code>, <code>round(x, n)</code>, <code>trunc</code>, <code>abs</code>, <code>sign</code></td></tr>
+  <tr><td>Enteros</td><td><code>factorial(n)</code> o <code>n!</code>, <code>gcd(a,b)</code>, <code>lcm(a,b)</code>, <code>mod(a,b)</code></td></tr>
+  <tr><td>Constantes</td><td><code>pi</code> o <code>π</code>, <code>e</code>, <code>tau</code>, <code>phi</code></td></tr>
+  <tr><td>Memoria</td><td><code>ans</code> (último resultado), <code>mem</code> (memoria)</td></tr>
+</table>
+
+<div class="aviso">
+  <strong>Atajos de escritura.</strong> Puede omitir el signo de multiplicar antes
+  de un paréntesis o de π: <code>2(3+4)</code> y <code>2π</code> funcionan.
+  El símbolo <code>%</code> significa «tanto por ciento»: <code>200*50%</code> da 100.
+  Para el resto de una división use <code>mod(a, b)</code>.
+</div>
+
+<h3>Grados, radianes y gradianes</h3>
+<p>
+  El desplegable <code>DEG / RAD / GRAD</code> afecta a todas las funciones
+  trigonométricas, tanto a la entrada como a la salida. Con <code>DEG</code>,
+  <code>sin(30)</code> vale 0,5 y <code>asin(0.5)</code> vale 30.
+</p>
+
+<h3>Tecla 2ⁿᵈ y memoria</h3>
+<p>
+  La tecla <code>2ⁿᵈ</code> cambia las teclas a su función alternativa
+  (<code>sin</code> pasa a <code>asin</code>, <code>√</code> a <code>∛</code>,
+  <code>ln</code> a <code>eˣ</code>…). Las teclas <code>MC</code>,
+  <code>MR</code>, <code>M+</code> y <code>M−</code> gestionan la memoria, cuyo
+  valor se muestra siempre al lado.
+</p>
+
+<h3>Variables propias</h3>
+<p>
+  Puede guardar valores con un nombre y reutilizarlos. Escriba
+  <code>r = 2.5</code> y pulse <kbd>Intro</kbd>: a partir de ahí
+  <code>pi*r^2</code> usará ese valor. Las variables definidas aparecen debajo de
+  la pantalla, y el botón <em>Borrar variables</em> las olvida todas.
+</p>
+<div class="aviso">
+  No se pueden usar como nombre las constantes ni las funciones ya existentes
+  (<code>pi</code>, <code>e</code>, <code>sin</code>, <code>ans</code>…).
+</div>
+
+<!-- ==================================================================== -->
+<h2 id="graficas">3. Gráficas de funciones</h2>
+<p>
+  Representa hasta cuatro funciones de <code>x</code> a la vez, cada una con su
+  color.
+</p>
+<ul>
+  <li>Escriba las funciones y fije el intervalo de <code>x</code>.</li>
+  <li><b>Ajustar el eje Y</b> recorta los picos de las asíntotas para que la curva se lea bien.</li>
+  <li><b>Marcar los cortes</b> señala con un punto dónde cada función corta el eje X.</li>
+  <li><b>Superponer la derivada</b> dibuja además f′ de la primera función, con línea discontinua.</li>
+</ul>
+<p>
+  Debajo de la gráfica se listan, para cada función, sus cortes con los ejes, sus
+  máximos y mínimos y sus límites en ±∞. La barra de herramientas permite hacer
+  zoom, desplazarse y guardar la gráfica como imagen.
+</p>
+
+<!-- ==================================================================== -->
+<h2 id="ecuaciones">4. Ecuaciones e inecuaciones</h2>
+<p>
+  Resuelve ecuaciones de una incógnita: polinómicas, trigonométricas,
+  exponenciales, logarítmicas y con radicales.
+</p>
+<ul>
+  <li>La incógnita se detecta sola: no tiene por qué llamarse <code>x</code>.</li>
+  <li>Si omite el <code>=</code>, se supone <code>= 0</code>.</li>
+  <li>Se muestran el valor aproximado y el <strong>valor exacto</strong> (por ejemplo <code>sqrt(2)</code> en lugar de 1,4142).</li>
+  <li>Las soluciones complejas aparecen aparte y pueden ocultarse con la casilla correspondiente.</li>
+</ul>
+<p>
+  La aplicación descarta automáticamente las <em>raíces espurias</em>, que son las
+  que aparecen al elevar al cuadrado los dos lados y no cumplen la ecuación
+  original. También distingue los dos casos límite: una <b>identidad</b> como
+  <code>x + 1 = x + 1</code> (se cumple siempre) y una ecuación
+  <b>sin solución</b> como <code>x + 1 = x + 2</code>.
+</p>
+
+<h3>Inecuaciones</h3>
+<p>
+  Escriba <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code> o
+  <code>&gt;=</code> en lugar del igual, por ejemplo <code>x^2 - 4 &gt; 0</code>.
+  Se obtiene el conjunto solución en forma de intervalos, los puntos frontera, y
+  la gráfica sombrea en verde la zona donde se cumple la condición.
+</p>
+
+<!-- ==================================================================== -->
+<h2 id="sistemas">5. Sistemas de ecuaciones</h2>
+<p>Resuelve sistemas lineales de 2 a 10 ecuaciones, con cualquier número de incógnitas.</p>
+<ul>
+  <li>Escriba cada ecuación en su campo: <code>2x + 3y = 7</code>.</li>
+  <li>Las incógnitas se detectan solas y pueden tener cualquier nombre.</li>
+  <li>Puede poner incógnitas en los dos lados (<code>2x = 3y + 1</code>) y usar fracciones o decimales (<code>x + y = 7/2</code>).</li>
+  <li>No hace falta que el sistema sea cuadrado.</li>
+</ul>
+<p>El informe indica, aplicando el teorema de Rouché-Frobenius, de qué tipo es el sistema:</p>
+<table>
+  <tr><th>Tipo</th><th>Significado</th></tr>
+  <tr><td>Compatible determinado</td><td>Una única solución, que se muestra en forma exacta y aproximada.</td></tr>
+  <tr><td>Compatible indeterminado</td><td>Infinitas soluciones. Se da la solución general y los grados de libertad.</td></tr>
+  <tr><td>Incompatible</td><td>No hay ninguna solución.</td></tr>
+</table>
+<p>Además se muestran la matriz ampliada, los rangos y, si el sistema es cuadrado, el determinante.</p>
+
+<!-- ==================================================================== -->
+<h2 id="calculo">6. Cálculo: derivadas, integrales y límites</h2>
+<table>
+  <tr><th>Operación</th><th>Qué obtiene</th></tr>
+  <tr><td>Derivada</td><td>La derivada del orden que indique, simplificada y factorizada, con las derivadas intermedias.</td></tr>
+  <tr><td>Integral indefinida</td><td>La primitiva, y la comprobación de que al derivarla se recupera la función.</td></tr>
+  <tr><td>Integral definida</td><td>El valor exacto y el aproximado. Si no hay primitiva elemental, se calcula por cuadratura numérica. El área queda sombreada en la gráfica.</td></tr>
+  <tr><td>Límite</td><td>Los dos límites laterales y, si coinciden, el límite. Para el infinito escriba <code>oo</code> o <code>-oo</code>.</td></tr>
+  <tr><td>Serie de Taylor</td><td>El desarrollo hasta el orden que pida. Con centro 0 se llama serie de Maclaurin. La gráfica compara la función con el polinomio.</td></tr>
+  <tr><td>Máximos y mínimos</td><td>Resuelve f′ = 0 y clasifica cada punto con el signo de f″, más los puntos de inflexión y los límites en el infinito.</td></tr>
+  <tr><td>Análisis completo</td><td>Dominio, recorrido, cortes con los ejes, simetría (par o impar) y periodo.</td></tr>
+</table>
+<div class="aviso">
+  Los límites de integración admiten expresiones, no sólo números:
+  <code>pi</code>, <code>2*pi</code>, <code>sqrt(2)</code>, <code>oo</code>…
+</div>
+
+<!-- ==================================================================== -->
+<h2 id="matrices">7. Matrices</h2>
+<p>
+  Las matrices se escriben como texto: <b>una fila por línea</b>, con los
+  elementos separados por espacios o comas. Se admiten fracciones y expresiones,
+  así que los resultados pueden darse en forma exacta.
+</p>
+<pre><code>1/2   sqrt(2)   0
+0     1         pi</code></pre>
+<table>
+  <tr><th>Operación</th><th>Notas</th></tr>
+  <tr><td>Propiedades</td><td>Dimensión, rango, determinante, traza, nulidad e invertibilidad.</td></tr>
+  <tr><td>Transpuesta y determinante</td><td>El determinante sólo existe para matrices cuadradas.</td></tr>
+  <tr><td>Inversa</td><td>Sólo si es cuadrada y su determinante no es nulo. Se incluye la comprobación A·A⁻¹.</td></tr>
+  <tr><td>Pseudoinversa</td><td>Generaliza la inversa a matrices no cuadradas o singulares.</td></tr>
+  <tr><td>Gauss-Jordan</td><td>Forma escalonada reducida y columnas pivote.</td></tr>
+  <tr><td>Potencia Aⁿ</td><td>Admite exponentes negativos si la matriz es invertible.</td></tr>
+  <tr><td>Autovalores y autovectores</td><td>Polinomio característico, autovalores con su multiplicidad, autovectores y, si es posible, la diagonalización A = P·D·P⁻¹.</td></tr>
+  <tr><td>Núcleo e imagen</td><td>Bases de los subespacios correspondientes.</td></tr>
+  <tr><td>Descomposición LU</td><td>A = L·U con las permutaciones de filas necesarias.</td></tr>
+  <tr><td>A+B, A−B, A·B, A∘B</td><td>Se comprueban las dimensiones antes de operar y se avisa si no encajan.</td></tr>
+  <tr><td>Resolver A·x = b</td><td>Escriba en B la columna de términos independientes. Clasifica el sistema y da la solución.</td></tr>
+</table>
+
+<!-- ==================================================================== -->
+<h2 id="estadistica">8. Estadística</h2>
+<p>Tiene tres pestañas.</p>
+
+<h3>Datos</h3>
+<p>
+  Pegue o escriba la serie separando los valores con comas, espacios o saltos de
+  línea (puede pegar una columna de una hoja de cálculo directamente). Se obtiene:
+</p>
+<ul>
+  <li>Media aritmética, geométrica y armónica, mediana y moda.</li>
+  <li>Varianza y desviación típica, muestrales (n−1) y poblacionales (n).</li>
+  <li>Coeficiente de variación y error típico de la media.</li>
+  <li>Cuartiles, rango intercuartílico y <b>valores atípicos</b> por el criterio 1,5·IQR.</li>
+  <li>Asimetría y curtosis, con su interpretación en palabras.</li>
+</ul>
+<p>
+  El botón <em>Frecuencias</em> muestra la tabla de frecuencias absolutas,
+  relativas y acumuladas. El gráfico puede ser histograma, diagrama de caja,
+  serie ordenada u ojiva.
+</p>
+
+<h3>Regresión</h3>
+<p>
+  Con dos series emparejadas calcula la recta de mínimos cuadrados
+  <code>y = a·x + b</code>, la covarianza, el coeficiente de correlación
+  <em>r</em> y el de determinación <em>r²</em>, con una interpretación de la
+  fuerza y el sentido de la relación. La gráfica superpone la nube de puntos y la
+  recta.
+</p>
+
+<h3>Distribuciones</h3>
+<table>
+  <tr><th>Distribución</th><th>Cuándo se usa</th></tr>
+  <tr><td>Normal N(μ, σ)</td><td>Variable continua. Da la densidad, P(X ≤ x), P(X &gt; x) y el percentil.</td></tr>
+  <tr><td>Binomial B(n, p)</td><td>Número de éxitos en n ensayos independientes.</td></tr>
+  <tr><td>Poisson P(λ)</td><td>Número de sucesos en un intervalo, con un ritmo medio λ.</td></tr>
+</table>
+
+<!-- ==================================================================== -->
+<h2 id="complejos">9. Números complejos</h2>
+<p>Se admiten estas formas de escritura:</p>
+<table>
+  <tr><th>Forma</th><th>Ejemplos</th></tr>
+  <tr><td>Binómica</td><td><code>3+4i</code>, <code>-2i</code>, <code>5</code>, <code>2-3I</code></td></tr>
+  <tr><td>Polar en grados</td><td><code>5∠53.13</code> o <code>5&lt;53.13</code></td></tr>
+  <tr><td>Polar en radianes</td><td><code>5∠0.927rad</code></td></tr>
+</table>
+<p>Las operaciones disponibles son:</p>
+<ul>
+  <li><b>Analizar un número</b>: todas sus formas (binómica, polar, trigonométrica y exponencial), módulo, argumento, conjugado, opuesto, inverso y cuadrante.</li>
+  <li><b>Suma, resta, producto y cociente</b>, recordando la regla de módulos y argumentos.</li>
+  <li><b>Potencia</b> por la fórmula de De Moivre.</li>
+  <li><b>Raíces n-ésimas</b>: las n raíces repartidas sobre la circunferencia, con su separación angular.</li>
+</ul>
+<p>
+  El plano de Argand dibuja cada número como un vector desde el origen, y en las
+  raíces marca la circunferencia sobre la que se reparten.
+</p>
+
+<!-- ==================================================================== -->
+<h2 id="geometria">10. Geometría</h2>
+<p>
+  61 figuras: 36 planas y 25 cuerpos en el espacio. Use el desplegable
+  <em>Tipo</em> para filtrar por planas o cuerpos, y el campo <em>Filtrar
+  figuras</em> para buscar por nombre (no hace falta poner las tildes).
+</p>
+
+<h3>Figuras planas</h3>
+<p>
+  Cuadrado, rectángulo, paralelogramo, rombo, tres tipos de trapecio, cometa,
+  cuadrilátero cíclico, rectángulo redondeado, seis formas de definir un
+  triángulo (base y altura, tres lados, rectángulo, equilátero, isósceles, dos
+  lados y el ángulo, y por coordenadas), círculo, semicírculo, sector, segmento,
+  corona, sector de corona, elipse, segmento parabólico, polígono regular de
+  <var>n</var> lados con nueve casos con nombre propio (del pentágono al
+  icoságono) y estrella regular.
+</p>
+
+<h3>Cuerpos en el espacio</h3>
+<p>
+  Cubo, ortoedro, prisma regular y prisma de base cualquiera, cilindro, cilindro
+  hueco, cono, tronco de cono, esfera, semiesfera, casquete, sector, zona y cuña
+  esféricos, pirámide de base cualquiera, pirámide cuadrangular y regular, tronco
+  de pirámide, los cinco sólidos platónicos, elipsoide, toro y paraboloide de
+  revolución.
+</p>
+
+<div class="aviso">
+  Las unidades son genéricas: si introduce los datos en centímetros, las áreas
+  salen en cm² (<code>u²</code>) y los volúmenes en cm³ (<code>u³</code>).
+  Los ángulos siempre se introducen y se muestran en grados.
+</div>
+
+<p>
+  La vista previa dibuja la figura a escala con los datos introducidos, y bajo la
+  tabla de resultados se muestran las fórmulas aplicadas. Si los datos no
+  describen una figura posible (por ejemplo, tres lados que no cierran un
+  triángulo), la aplicación lo explica en lugar de dar un número sin sentido.
+</p>
+
+<!-- ==================================================================== -->
+<h2 id="conversiones">11. Conversiones de unidades</h2>
+<p>
+  Hay 51 magnitudes con más de 550 unidades, agrupadas en nueve familias
+  (básicas, mecánica, térmica, fluidos, electricidad y magnetismo, luz y
+  radiación, química, informática y cotidianas).
+</p>
+<ol>
+  <li>Elija el <strong>grupo</strong> y la <strong>magnitud</strong>, o escriba en el buscador el nombre o símbolo de la unidad (por ejemplo <code>nudo</code>, <code>kWh</code> o <code>psi</code>) y pulse <em>Buscar</em>.</li>
+  <li>Escriba el valor y elija las unidades de origen y destino. El resultado se actualiza al momento.</li>
+  <li>La tabla inferior muestra a la vez la equivalencia en <strong>todas</strong> las unidades de esa magnitud.</li>
+  <li>El botón <code>⇄</code> intercambia origen y destino.</li>
+</ol>
+<div class="aviso">
+  Algunas magnitudes llevan una nota aclaratoria: por ejemplo, el consumo de
+  combustible es una relación inversa (a más L/100 km, menos km/L), y los
+  prefijos <code>kB</code>/<code>MB</code> son potencias de 10 mientras que
+  <code>KiB</code>/<code>MiB</code> lo son de 2.
+</div>
+
+<!-- ==================================================================== -->
+<h2 id="bases">12. Bases numéricas</h2>
+<p>Convierte entre cualquier par de bases del 2 al 36. Acepta:</p>
+<ul>
+  <li><strong>Signo negativo</strong>: <code>-1010</code> en binario es −10.</li>
+  <li><strong>Parte fraccionaria</strong>: <code>101.101</code> en binario es 5,625.</li>
+  <li><strong>Prefijos habituales</strong>: <code>0x1F</code>, <code>0b1010</code>, <code>0o17</code>.</li>
+  <li><strong>Separadores</strong>: los espacios y los guiones bajos se ignoran.</li>
+</ul>
+<p>
+  El panel de detalle muestra además la representación simultánea en binario,
+  octal, decimal y hexadecimal, el complemento a dos, los bits necesarios y el
+  desglose posicional del número.
+</p>
+
+<h3>Operaciones bit a bit</h3>
+<p>
+  En el bloque inferior puede aplicar <code>AND</code>, <code>OR</code>,
+  <code>XOR</code>, <code>NOT</code> y los desplazamientos <code>&lt;&lt;</code> y
+  <code>&gt;&gt;</code>. Los operandos se escriben en decimal y el resultado se
+  muestra en binario agrupado de cuatro en cuatro, además de en decimal,
+  hexadecimal y octal.
+</p>
+<div class="aviso">
+  El tamaño de palabra (8, 16, 32 o 64 bits) puede fijarse o dejarse en
+  <em>auto</em>. <code>NOT</code> necesita un tamaño concreto, porque invertir
+  todos los bits de un entero sin límite daría infinitos unos a la izquierda.
+</div>
+
+<!-- ==================================================================== -->
+<h2 id="combinatoria">13. Combinatoria</h2>
+<table>
+  <tr><th>Operación</th><th>Para qué sirve</th></tr>
+  <tr><td>Factorial <code>n!</code></td><td>Producto 1·2·…·n. Exacto hasta 20 000; por encima se da la estimación y el número de dígitos.</td></tr>
+  <tr><td>Combinaciones <code>C(n,r)</code></td><td>Elegir r de n sin importar el orden.</td></tr>
+  <tr><td>Permutaciones <code>P(n,r)</code></td><td>Elegir y ordenar r de n.</td></tr>
+  <tr><td>Variaciones con repetición</td><td>Secuencias de longitud r con n símbolos (contraseñas, matrículas…).</td></tr>
+  <tr><td>Combinaciones con repetición</td><td>Elegir r de n tipos pudiendo repetir.</td></tr>
+  <tr><td>Doble factorial <code>n!!</code></td><td>Producto de uno de cada dos: n·(n−2)·(n−4)…</td></tr>
+  <tr><td>Subfactorial <code>¡n</code></td><td>Permutaciones sin ningún elemento en su sitio (desórdenes).</td></tr>
+  <tr><td>Números de Catalan</td><td>1, 1, 2, 5, 14, 42, 132…</td></tr>
+  <tr><td>Función gamma <code>Γ(x)</code></td><td>Extiende el factorial a los números reales.</td></tr>
+  <tr><td>Aproximación de Stirling</td><td>Compara n! con √(2πn)·(n/e)ⁿ y da el error.</td></tr>
+</table>
+
+<!-- ==================================================================== -->
+<h2 id="historial">14. El historial</h2>
+<p>Cada módulo guarda su propio historial, con estas opciones:</p>
+<ul>
+  <li><strong>Buscar</strong>: filtra las operaciones según lo que escriba (sin distinguir tildes ni mayúsculas).</li>
+  <li><strong>Doble clic</strong>: vuelve a cargar esa operación con todos sus datos.</li>
+  <li><strong>Borrar selección</strong>: elimina sólo lo seleccionado. Puede seleccionar varias entradas con <kbd>Ctrl</kbd> o <kbd>Mayús</kbd>.</li>
+  <li><strong>Vaciar todo</strong>: borra el historial de ese módulo (pide confirmación).</li>
+  <li><strong>Exportar</strong>: guarda el historial en un archivo <code>.csv</code> o <code>.txt</code>.</li>
+</ul>
+<p>Se conservan las 500 operaciones más recientes de cada módulo.</p>
+
+<!-- ==================================================================== -->
+<h2 id="datos">15. Dónde se guardan sus datos</h2>
+<p>
+  El historial, la configuración y el registro de errores se guardan en su perfil
+  de usuario, no junto al programa:
+</p>
+<ul>
+  <li><strong>Windows:</strong> <code>%APPDATA%\Axioma</code></li>
+  <li><strong>macOS:</strong> <code>~/Library/Application Support/Axioma</code></li>
+  <li><strong>Linux:</strong> <code>~/.local/share/Axioma</code></li>
+</ul>
+<p>
+  La ruta exacta aparece en <em>Acerca de</em>. Guardarlo ahí, y no junto al
+  programa, hace que la aplicación funcione igual esté instalada donde esté, y
+  que desinstalarla no borre su historial.
+</p>
+
+<footer>
+  <p>
+    <strong>Axioma 3.0</strong> · calculadora científica multifunción<br>
+    Desarrollador: Erlanders — <a href="mailto:3rlanderse34@gmail.com">3rlanderse34@gmail.com</a><br>
+    Proyecto: <a href="https://github.com/erlanders177/Axioma">github.com/erlanders177/Axioma</a><br>
+    Licencia PolyForm Noncommercial 1.0.0 — uso no comercial
+  </p>
+</footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Normaliza los finales de línea a LF dentro del repositorio y los deja en el
+# formato nativo al descargarlo. Sin esto, un clon desde Linux o macOS mostraría
+# el archivo entero como modificado.
+* text=auto
+
+*.py    text diff=python
+*.md    text
+*.html  text
+*.txt   text
+*.spec  text
+
+# Binarios: git no debe tocarlos.
+*.png   binary
+*.jpg   binary
+*.ico   binary
