@@ -269,7 +269,10 @@ class VentanaPrincipal(QMainWindow):
             <p><b>Datos del usuario:</b><br>
                <code>{dir_datos()}</code></p>
             <p style="color:#888;font-size:11px;">
-               Licencia PolyForm Noncommercial 1.0.0 — uso no comercial</p>
+               Copyright 2026 Aarón Aranda Torrijos<br>
+               Licencia PolyForm Noncommercial 1.0.0 — libre salvo uso comercial.<br>
+               Para uso comercial, escriba a
+               <a href="mailto:{__contacto__}">{__contacto__}</a>.</p>
             """
         )
         cuadro.setStandardButtons(QMessageBox.Ok)

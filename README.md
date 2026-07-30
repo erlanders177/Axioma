@@ -189,15 +189,34 @@ con cuidado:
 
 ## Licencia
 
-[PolyForm Noncommercial License 1.0.0](LICENSE) — libre para uso personal,
-educativo, de investigación y de organizaciones sin ánimo de lucro. El uso
-comercial requiere permiso del autor.
+Axioma se distribuye bajo la
+[PolyForm Noncommercial License 1.0.0](LICENSE).
 
-Es una licencia *source-available*, no una licencia de código abierto aprobada
-por la OSI, porque restringe el uso comercial.
+> Required Notice: Copyright 2026 Aarón Aranda Torrijos
+> (https://github.com/erlanders177/Axioma)
+
+**Puede usarlo libremente** cualquier persona para uso personal, estudio,
+investigación, proyectos de aficionado o docencia, y cualquier organización sin
+ánimo de lucro, centro educativo, organismo público de investigación o
+administración pública. Puede además modificarlo y redistribuirlo dentro de esos
+usos, siempre que conserve este aviso.
+
+**Lo que no permite** es el uso comercial: no puede emplearse para generar
+ingresos ni integrarse en un producto o servicio de pago.
+
+### ¿Quiere usarlo comercialmente?
+
+La idea no es cerrar la puerta, es no regalar el trabajo a quien va a lucrarse
+con él. Si quiere usar Axioma en un producto o servicio comercial, escriba a
+**aaron.aranda.t@gmail.com** y acordamos una licencia comercial. Estoy abierto a
+ello.
+
+<sub>Nota: PolyForm Noncommercial es una licencia <i>source-available</i>, no una
+licencia de código abierto aprobada por la OSI, porque restringe el uso
+comercial. GitHub no la muestra en el panel lateral de licencia por ese motivo.</sub>
 
 ---
 
 <div align="center">
-<sub>Desarrollado por <b>Erlanders</b> · <a href="mailto:3rlanderse34@gmail.com">3rlanderse34@gmail.com</a></sub>
+<sub>Desarrollado por <b>Aarón Aranda Torrijos</b> (<a href="https://github.com/erlanders177">@erlanders177</a>) · <a href="mailto:aaron.aranda.t@gmail.com">aaron.aranda.t@gmail.com</a></sub>
 </div>
