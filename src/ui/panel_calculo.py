@@ -6,16 +6,19 @@ import numpy as np
 import sympy as sp
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
-    QComboBox, QFormLayout, QHBoxLayout, QLineEdit, QSplitter, QVBoxLayout, QWidget,
+    QComboBox, QFormLayout, QHBoxLayout, QLineEdit, QPlainTextEdit, QSplitter,
+    QTabWidget, QVBoxLayout, QWidget,
 )
 
 from ..core import calculo
 from ..core import historial as hist
+from ..core import pasos as pasos_core
 from ..core import simbolico as sim
 from ..core.config import config
 from . import tema
 from .comunes import (
-    PanelHistorial, TablaResultados, aviso, boton, etiqueta, separador, tarjeta,
+    PanelHistorial, TablaResultados, aviso, boton, etiqueta, formatear_pasos,
+    separador, tarjeta,
 )
 from .grafica import CICLO, PanelGrafica, cortar_saltos, muestrear
 
@@ -99,10 +102,30 @@ class PanelCalculo(QWidget):
         columna.setSpacing(10)
 
         marco_res, col_res = tarjeta()
-        col_res.addWidget(etiqueta("Resultado", "seccion"))
+        self.pestanas = QTabWidget()
+
+        contenedor_tabla = QWidget()
+        col_tabla = QVBoxLayout(contenedor_tabla)
+        col_tabla.setContentsMargins(0, 8, 0, 0)
         self.tabla = TablaResultados()
         self.tabla.setHorizontalHeaderLabels(["Concepto", "Valor"])
-        col_res.addWidget(self.tabla, 1)
+        col_tabla.addWidget(self.tabla, 1)
+        self.pestanas.addTab(contenedor_tabla, "Resultado")
+
+        contenedor_pasos = QWidget()
+        col_pasos = QVBoxLayout(contenedor_pasos)
+        col_pasos.setContentsMargins(0, 8, 0, 0)
+        self.pasos = QPlainTextEdit()
+        self.pasos.setProperty("clase", "mono")
+        self.pasos.setReadOnly(True)
+        self.pasos.setPlaceholderText(
+            "El desarrollo aparece aquí para derivadas, integrales y límites."
+        )
+        col_pasos.addWidget(self.pasos, 1)
+        self.pestanas.addTab(contenedor_pasos, "Paso a paso")
+
+        col_res.addWidget(self.pestanas, 1)
+
         fila = QHBoxLayout()
         fila.addWidget(boton("Copiar", "", self._copiar))
         fila.addStretch()
@@ -215,6 +238,7 @@ class PanelCalculo(QWidget):
             return
 
         self.tabla.mostrar(filas)
+        self._mostrar_pasos(clave, expresion_texto, variable_texto)
         self._dibujar(clave, expresion_texto, variable_texto)
 
         titulo = calculo.OPERACIONES[self.combo.currentIndex()][1]
@@ -256,6 +280,42 @@ class PanelCalculo(QWidget):
         if clave == "analisis":
             return calculo.analizar_funcion(expresion, variable)
         raise sim.ErrorSimbolico(f"Operación desconocida: {clave}")
+
+    def _mostrar_pasos(self, clave: str, expresion_texto: str,
+                       variable_texto: str) -> None:
+        """Rellena la pestaña de desarrollo, si la operación lo admite."""
+        soportadas = {"derivada", "integral", "integral_definida"}
+        if clave not in soportadas:
+            self.pasos.setPlainText(
+                "Esta operación no tiene desarrollo paso a paso.\n\n"
+                "Sí lo tienen las derivadas y las integrales, y también las "
+                "ecuaciones y los sistemas en sus propios módulos."
+            )
+            return
+
+        try:
+            expresion = sim.analizar(expresion_texto)
+            variable = sim.variable_principal(expresion, variable_texto)
+            if clave == "derivada":
+                lista = pasos_core.pasos_derivada(expresion, variable)
+            else:
+                lista = pasos_core.pasos_integral(expresion, variable)
+        except sim.ErrorSimbolico as e:
+            self.pasos.setPlainText(f"No se pudo desarrollar: {e}")
+            return
+        except Exception as e:  # sympy lanza tipos muy variados
+            self.pasos.setPlainText(
+                f"No se pudo desarrollar el procedimiento ({type(e).__name__}: {e})"
+            )
+            return
+
+        texto_pasos = formatear_pasos(lista)
+        if clave == "integral_definida":
+            texto_pasos += (
+                "\n\nUna vez hallada la primitiva F(x), se evalúa entre los "
+                "límites:\n      ∫[a,b] f(x) dx = F(b) − F(a)"
+            )
+        self.pasos.setPlainText(texto_pasos)
 
     # -------------------------------------------------------------- gráfica -- #
 
@@ -367,9 +427,14 @@ class PanelCalculo(QWidget):
     # ---------------------------------------------------------------- varios -- #
 
     def _copiar(self) -> None:
+        """Copia lo que se está viendo: el resultado o el desarrollo."""
         from PyQt5.QtWidgets import QApplication
         portapapeles = QApplication.clipboard()
-        if portapapeles is not None:
+        if portapapeles is None:
+            return
+        if self.pestanas.currentIndex() == 1:
+            portapapeles.setText(self.pasos.toPlainText())
+        else:
             portapapeles.setText(self.tabla.texto_plano())
 
     def _restaurar(self, datos: dict) -> None:

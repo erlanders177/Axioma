@@ -1,13 +1,15 @@
 <div align="center">
 
+<img src="assets/axioma.png" alt="Axioma" width="110">
+
 # Axioma
 
 **Calculadora científica multifunción de escritorio.**
 Doce módulos en una sola ventana, en español, sin conexión a internet.
 
+[![tests](https://github.com/erlanders177/Axioma/actions/workflows/tests.yml/badge.svg)](https://github.com/erlanders177/Axioma/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![PyQt5](https://img.shields.io/badge/GUI-PyQt5-41CD52?logo=qt&logoColor=white)](https://pypi.org/project/PyQt5/)
-[![Tests](https://img.shields.io/badge/tests-284%20pasando-2ea043)](tests/)
 [![Licencia](https://img.shields.io/badge/licencia-PolyForm%20Noncommercial-blue)](LICENSE)
 
 <img src="docs/capturas/graficador.png" alt="Módulo de gráficas de Axioma" width="90%">
@@ -20,24 +22,56 @@ Doce módulos en una sola ventana, en español, sin conexión a internet.
 
 | Módulo | Qué hace |
 |--------|----------|
-| **Calculadora** | Científica completa: trigonometría directa e inversa, hiperbólicas, logaritmos, factorial, memoria, grados/radianes/gradianes, variables propias y vista previa del resultado mientras se escribe. |
+| **Calculadora** | Científica completa: trigonometría directa e inversa, hiperbólicas, logaritmos, factorial, memoria, grados/radianes/gradianes, variables propias y vista previa del resultado mientras se escribe. Además **opera con unidades**: `5 km + 300 m` da `5.3 km`. |
 | **Gráficas** | Hasta cuatro funciones a la vez, con cortes, extremos y límites calculados automáticamente. Zoom, arrastre y exportación de la imagen. |
-| **Ecuaciones** | Ecuaciones **e inecuaciones** de una incógnita. Soluciones exactas y aproximadas, raíces complejas, factorización y gráfica con el conjunto solución sombreado. |
-| **Sistemas** | Hasta 10 ecuaciones lineales. Clasificación por Rouché-Frobenius, matriz ampliada, rangos y determinante. |
-| **Cálculo** | Derivadas de cualquier orden, integrales indefinidas y definidas, límites (incluidos los laterales), series de Taylor, extremos y análisis completo de funciones. |
+| **Ecuaciones** | Ecuaciones **e inecuaciones** de una incógnita, **resueltas paso a paso**. Soluciones exactas y aproximadas, raíces complejas, factorización y gráfica con el conjunto solución sombreado. |
+| **Sistemas** | Hasta 10 ecuaciones lineales, con el **método de Gauss paso a paso**. Clasificación por Rouché-Frobenius, matriz ampliada, rangos y determinante. |
+| **Cálculo** | Derivadas e integrales **paso a paso, nombrando cada regla aplicada**. Integrales definidas, límites laterales, series de Taylor, extremos y análisis completo de funciones. |
 | **Matrices** | Determinante, inversa, pseudoinversa, rango, traza, potencias, Gauss-Jordan, autovalores y autovectores, diagonalización, núcleo, imagen, LU y resolución de A·x = b. |
 | **Estadística** | Descriptiva completa con detección de atípicos, tabla de frecuencias, regresión lineal y distribuciones normal, binomial y de Poisson. Histograma, diagrama de caja y ojiva. |
 | **Complejos** | Formas binómica, polar, trigonométrica y exponencial. Aritmética, De Moivre, raíces n-ésimas y plano de Argand. |
-| **Geometría** | **61 figuras**: 36 planas y 25 cuerpos en el espacio, con vista previa 2D/3D y las fórmulas aplicadas. |
+| **Geometría** | **61 figuras**: 36 planas y 25 cuerpos, con vista previa 2D/3D y las fórmulas aplicadas. Incluye **cálculo inverso**: «el área vale 50, ¿cuánto mide el lado?». |
 | **Conversiones** | **51 magnitudes y 555 unidades**, con buscador y equivalencias simultáneas en toda la categoría. |
 | **Bases numéricas** | Bases 2 a 36 con signo, decimales y prefijos `0x`/`0b`/`0o`. Complemento a dos y operaciones bit a bit. |
 | **Combinatoria** | Factorial, combinaciones, permutaciones, variaciones, doble factorial, subfactorial, números de Catalan, función gamma y aproximación de Stirling. |
 
 Todos los módulos guardan su propio historial, con búsqueda, restauración con doble clic y exportación a CSV o TXT.
 
+### Paso a paso
+
+Axioma no se limita a dar el resultado: en ecuaciones, sistemas, derivadas e
+integrales muestra el desarrollo completo, nombrando la regla aplicada en cada
+punto y comprobando el resultado al final.
+
+```
+1. Es una ecuación de segundo grado
+      Tiene la forma a·x² + b·x + c = 0, con a = 1, b = -5 y c = 6.
+2. Se puede factorizar
+      (x - 3)*(x - 2) = 0
+3. Calculamos el discriminante
+      Δ = (-5)² − 4·(1)·(6) = 1
+4. Qué significa el discriminante
+      Δ > 0: hay dos soluciones reales distintas.
+5. Aplicamos la fórmula
+      x = (5 ± √1) / 2
+6. Comprobación
+      0 = 0, correcto
+```
+
 ---
 
 ## Instalación
+
+### Windows: descargar y usar
+
+Descargue `Axioma.exe` de la [última versión](https://github.com/erlanders177/Axioma/releases/latest)
+y ejecútelo. No necesita instalar nada más.
+
+> Windows SmartScreen puede avisar de que el programa no está firmado: el
+> certificado de firma es de pago y este proyecto no lo tiene. Pulse
+> *Más información → Ejecutar de todas formas*.
+
+### Desde el código fuente
 
 ```bash
 git clone https://github.com/erlanders177/Axioma.git
@@ -52,6 +86,7 @@ Requiere **Python 3.10 o superior**. Funciona en Windows, macOS y Linux.
 
 ```bash
 pip install pyinstaller
+python tools/generar_icono.py    # sólo si cambia el icono
 pyinstaller Axioma.spec
 ```
 
@@ -105,6 +140,9 @@ Axioma/
 ├── main.py                     punto de entrada
 ├── Axioma.spec                 receta de PyInstaller
 ├── requirements.txt
+├── assets/                     icono de la aplicación
+├── tools/
+│   └── generar_icono.py        regenera el icono de forma reproducible
 ├── docs/
 │   ├── manual_usuario.html     manual (F1 desde la aplicación)
 │   └── capturas/
@@ -113,11 +151,13 @@ Axioma/
 │   │   ├── evaluador.py        evaluador de expresiones con lista blanca (AST)
 │   │   ├── simbolico.py        base común de sympy, con filtrado de entrada
 │   │   ├── calculo.py          derivadas, integrales, límites y series
+│   │   ├── pasos.py            resolución paso a paso
 │   │   ├── matrices.py         álgebra lineal
 │   │   ├── estadistica.py      descriptiva, regresión y distribuciones
 │   │   ├── complejos.py        aritmética compleja y forma polar
 │   │   ├── unidades.py         51 magnitudes, 555 unidades
-│   │   ├── figuras.py          61 figuras geométricas
+│   │   ├── magnitudes.py       aritmética con unidades (5 km + 300 m)
+│   │   ├── figuras.py          61 figuras geométricas y cálculo inverso
 │   │   ├── bases.py            bases 2–36 y operaciones bit a bit
 │   │   ├── historial.py        persistencia del historial
 │   │   ├── config.py           preferencias del usuario
@@ -131,8 +171,9 @@ Axioma/
 │       ├── comunes.py          widgets compartidos
 │       └── tema.py             temas claro y oscuro
 └── tests/
-    ├── test_nucleo.py          183 pruebas de la lógica de cálculo
-    └── test_interfaz.py        101 pruebas de la interfaz (sin ventana)
+    ├── test_nucleo.py          lógica de cálculo
+    ├── test_extras.py          unidades, geometría inversa y paso a paso
+    └── test_interfaz.py        los doce paneles, sin abrir ventana
 ```
 
 `src/core` no importa nada de PyQt: la lógica de cálculo se puede probar y
@@ -147,10 +188,13 @@ pip install pytest
 python -m pytest tests/ -q
 ```
 
-284 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
+381 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
 unidades, las 61 figuras contra resultados conocidos, entradas maliciosas
 bloqueadas en el evaluador, y los doce módulos de la interfaz ejercitados de
 extremo a extremo con la plataforma *offscreen* de Qt.
+
+Se ejecutan automáticamente en cada `push` sobre Windows y Linux, con Python
+3.10, 3.12 y 3.13.
 
 ---
 

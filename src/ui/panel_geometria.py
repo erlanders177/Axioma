@@ -92,9 +92,51 @@ class PanelGeometria(QWidget):
         acciones.addWidget(boton("Ejemplo", "", self._rellenar_ejemplo,
                                  tooltip="Rellenar con valores de ejemplo"))
         col.addLayout(acciones)
+
+        col.addWidget(separador())
+        col.addWidget(self._crear_bloque_inverso())
         col.addStretch()
 
         columna.addWidget(marco, 1)
+        return contenedor
+
+    def _crear_bloque_inverso(self) -> QWidget:
+        """“Sé que el área vale 50, ¿cuánto mide el lado?”."""
+        contenedor = QWidget()
+        columna = QVBoxLayout(contenedor)
+        columna.setContentsMargins(0, 0, 0, 0)
+        columna.setSpacing(6)
+
+        columna.addWidget(etiqueta("Cálculo inverso", "seccion"))
+        columna.addWidget(etiqueta(
+            "Si conoce un resultado y le falta un dato, se puede hallar.",
+            "nota", ajustar=True,
+        ))
+
+        fila_conocido = QHBoxLayout()
+        fila_conocido.setSpacing(6)
+        self.combo_conocido = QComboBox()
+        self.combo_conocido.setToolTip("Resultado que ya conoce")
+        fila_conocido.addWidget(self.combo_conocido, 3)
+        fila_conocido.addWidget(etiqueta("="))
+        self.valor_conocido = CampoNumerico("50")
+        self.valor_conocido.aceptado.connect(self._resolver_inverso)
+        fila_conocido.addWidget(self.valor_conocido, 2)
+        columna.addLayout(fila_conocido)
+
+        fila_incognita = QHBoxLayout()
+        fila_incognita.setSpacing(6)
+        fila_incognita.addWidget(etiqueta("Hallar:", "subtitulo"))
+        self.combo_incognita = QComboBox()
+        self.combo_incognita.setToolTip("Dato que quiere averiguar")
+        fila_incognita.addWidget(self.combo_incognita, 1)
+        fila_incognita.addWidget(boton("Resolver", "", self._resolver_inverso))
+        columna.addLayout(fila_incognita)
+
+        self.resultado_inverso = etiqueta("", "resultado", ajustar=True)
+        columna.addWidget(self.resultado_inverso)
+
+        self.bloque_inverso = contenedor
         return contenedor
 
     def _crear_columna_resultados(self) -> QWidget:
@@ -208,6 +250,7 @@ class PanelGeometria(QWidget):
         )
         self.tabla.limpiar()
         self.lienzo.limpiar("Introduzca los datos y pulse «Calcular»")
+        self._preparar_inverso(figura)
         self._rellenar_ejemplo()
 
     def _rellenar_ejemplo(self) -> None:
@@ -218,6 +261,81 @@ class PanelGeometria(QWidget):
             campo = self._campos.get(parametro.simbolo)
             if campo is not None:
                 campo.poner(parametro.predeterminado)
+        self.calcular(silencioso=True)
+
+    # ------------------------------------------------------ cálculo inverso -- #
+
+    def _preparar_inverso(self, figura: geo.Figura) -> None:
+        """Rellena los desplegables del modo inverso para la figura actual."""
+        self.resultado_inverso.clear()
+
+        invertibles = geo.resultados_invertibles(figura.nombre)
+        continuos = [p for p in figura.parametros if not p.entero]
+
+        # Con un solo dato no hay nada que despejar, y los enteros (número de
+        # lados) no se pueden hallar por aproximación.
+        disponible = bool(invertibles) and bool(continuos)
+        self.bloque_inverso.setVisible(disponible)
+        if not disponible:
+            return
+
+        self.combo_conocido.clear()
+        self.combo_conocido.addItems(invertibles)
+        self.combo_incognita.clear()
+        for parametro in continuos:
+            self.combo_incognita.addItem(parametro.etiqueta, parametro.simbolo)
+
+    def _resolver_inverso(self) -> None:
+        nombre = self.combo_figura.currentText()
+        etiqueta_conocida = self.combo_conocido.currentText()
+        incognita = self.combo_incognita.currentData()
+        if not (nombre and etiqueta_conocida and incognita):
+            return
+
+        try:
+            objetivo = self.valor_conocido.valor()
+        except ValueError as e:
+            aviso(self, str(e), "Cálculo inverso")
+            return
+
+        # El resto de datos se toman de los campos, salvo el que se busca.
+        conocidos: dict[str, float] = {}
+        for simbolo, campo in self._campos.items():
+            if simbolo == incognita:
+                continue
+            try:
+                valor = campo.valor(obligatorio=False)
+            except ValueError as e:
+                aviso(self, str(e), "Cálculo inverso")
+                return
+            if valor is None:
+                parametro = next(p for p in geo.figura(nombre).parametros
+                                 if p.simbolo == simbolo)
+                aviso(self, f"Para hallar la incógnita hace falta conocer "
+                            f"«{parametro.etiqueta}».", "Faltan datos")
+                return
+            conocidos[simbolo] = valor
+
+        try:
+            solucion = geo.resolver_inverso(
+                nombre, etiqueta_conocida, objetivo, incognita, conocidos
+            )
+        except geo.ErrorFigura as e:
+            self.resultado_inverso.clear()
+            aviso(self, str(e), "Cálculo inverso")
+            return
+
+        parametro = next(p for p in geo.figura(nombre).parametros
+                         if p.simbolo == incognita)
+        decimales = config["decimales"]
+        self.resultado_inverso.setText(
+            f"{parametro.etiqueta} = {formatear(solucion, decimales)}"
+        )
+
+        # Se rellena el campo y se recalcula, para ver la figura resultante.
+        campo = self._campos.get(incognita)
+        if campo is not None:
+            campo.poner(solucion)
         self.calcular(silencioso=True)
 
     # -------------------------------------------------------------- cálculo -- #

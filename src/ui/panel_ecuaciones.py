@@ -21,10 +21,13 @@ from PyQt5.QtWidgets import (
 )
 
 from ..core import historial as hist
+from ..core import pasos as pasos_core
 from ..core import simbolico as sim
 from ..core.config import config
 from . import tema
-from .comunes import PanelHistorial, aviso, boton, etiqueta, separador, tarjeta
+from .comunes import (
+    PanelHistorial, aviso, boton, etiqueta, formatear_pasos, separador, tarjeta,
+)
 from .grafica import CICLO, PanelGrafica, cortar_saltos, muestrear
 
 EJEMPLOS = [
@@ -105,6 +108,14 @@ class PanelEcuaciones(QWidget):
         self.chk_exactas.setChecked(True)
         self.chk_exactas.stateChanged.connect(self._recalcular_silencioso)
         opciones.addWidget(self.chk_exactas)
+
+        self.chk_pasos = QCheckBox("Resolver paso a paso")
+        self.chk_pasos.setChecked(True)
+        self.chk_pasos.setToolTip(
+            "Muestra el desarrollo completo: fórmula, discriminante y comprobación"
+        )
+        self.chk_pasos.stateChanged.connect(self._recalcular_silencioso)
+        opciones.addWidget(self.chk_pasos)
         opciones.addStretch()
         col.addLayout(opciones)
 
@@ -210,6 +221,8 @@ class PanelEcuaciones(QWidget):
             return
 
         informe, resumen = self._formatear(expresion, variable, soluciones)
+        if self.chk_pasos.isChecked():
+            informe += self._desarrollo(expresion, variable)
         self.salida.setPlainText(informe)
         self._dibujar(expresion, variable, soluciones["reales"])
 
@@ -408,6 +421,19 @@ class PanelEcuaciones(QWidget):
                           "contando multiplicidades; algunas pueden estar repetidas.")
 
         return "\n".join(lineas), ", ".join(partes_resumen) or "sin solución real"
+
+    @staticmethod
+    def _desarrollo(expresion: sp.Expr, variable: sp.Symbol) -> str:
+        """Bloque con la resolución paso a paso, o vacío si no se pudo generar."""
+        try:
+            lista = pasos_core.pasos_ecuacion(expresion, variable)
+        except Exception:
+            # El desarrollo es un extra: si falla, el resultado ya está arriba.
+            return ""
+        if not lista:
+            return ""
+        separador_visual = "\n\n" + "─" * 58 + "\n"
+        return f"{separador_visual}PASO A PASO\n\n{formatear_pasos(lista)}"
 
     # -------------------------------------------------------------- gráfica -- #
 

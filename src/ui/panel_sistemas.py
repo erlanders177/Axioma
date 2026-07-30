@@ -22,8 +22,8 @@ from __future__ import annotations
 import sympy as sp
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
-    QFormLayout, QHBoxLayout, QLineEdit, QPlainTextEdit, QScrollArea, QSpinBox,
-    QSplitter, QVBoxLayout, QWidget,
+    QCheckBox, QFormLayout, QHBoxLayout, QLineEdit, QPlainTextEdit, QScrollArea,
+    QSpinBox, QSplitter, QVBoxLayout, QWidget,
 )
 from sympy.parsing.sympy_parser import (
     convert_xor, implicit_multiplication_application, parse_expr,
@@ -31,8 +31,11 @@ from sympy.parsing.sympy_parser import (
 )
 
 from ..core import historial as hist
+from ..core import pasos as pasos_core
 from ..core.config import config
-from .comunes import PanelHistorial, aviso, boton, etiqueta, tarjeta
+from .comunes import (
+    PanelHistorial, aviso, boton, etiqueta, formatear_pasos, tarjeta,
+)
 
 TRANSFORMACIONES = standard_transformations + (
     implicit_multiplication_application,
@@ -114,6 +117,13 @@ class PanelSistemas(QWidget):
         acciones.addWidget(boton("Resolver", "primario", self.resolver))
         acciones.addWidget(boton("Limpiar", "", self.limpiar))
         acciones.addWidget(boton("Ejemplo", "", self._ejemplo))
+        self.chk_pasos = QCheckBox("Método de Gauss paso a paso")
+        self.chk_pasos.setChecked(True)
+        self.chk_pasos.setToolTip(
+            "Muestra cada operación sobre las filas de la matriz ampliada"
+        )
+        self.chk_pasos.stateChanged.connect(lambda: self.resolver(silencioso=True))
+        acciones.addWidget(self.chk_pasos)
         acciones.addStretch()
         col.addLayout(acciones)
         columna.addWidget(marco)
@@ -293,6 +303,7 @@ class PanelSistemas(QWidget):
                 else:
                     salida.append(f"   {nombre} = {aproximado}")
                 partes.append(f"{nombre}={sp.N(valor, 6)}")
+            salida.append(self._desarrollo(ecuaciones, incognitas))
             return "\n".join(salida), ", ".join(partes)
 
         grados = len(incognitas) - rango
@@ -305,7 +316,21 @@ class PanelSistemas(QWidget):
         if libres:
             salida.append("")
             salida.append(f"donde {', '.join(libres)} puede tomar cualquier valor.")
+        salida.append(self._desarrollo(ecuaciones, incognitas))
         return "\n".join(salida), f"infinitas soluciones ({grados} g. de libertad)"
+
+    def _desarrollo(self, ecuaciones: list, incognitas: list) -> str:
+        """Bloque con la eliminación de Gauss, o vacío si está desactivado."""
+        if not self.chk_pasos.isChecked():
+            return ""
+        try:
+            lista = pasos_core.pasos_sistema(ecuaciones, incognitas)
+        except Exception:
+            # El desarrollo es un extra: si falla, el resultado ya está arriba.
+            return ""
+        if not lista:
+            return ""
+        return "\n" + "─" * 58 + "\nPASO A PASO (método de Gauss)\n\n" + formatear_pasos(lista)
 
     # ---------------------------------------------------------------- varios -- #
 

@@ -36,6 +36,19 @@ def recurso(*partes: str) -> Path:
     return raiz_recursos().joinpath(*partes)
 
 
+def icono() -> Path | None:
+    """Ruta al icono de la aplicación, o ``None`` si no está disponible.
+
+    Se prefiere el ``.ico`` (es el que entiende Windows para la barra de tareas)
+    y se recurre al PNG en el resto de sistemas.
+    """
+    for nombre in ("axioma.ico", "axioma.png"):
+        ruta = recurso("assets", nombre)
+        if ruta.exists():
+            return ruta
+    return None
+
+
 def dir_datos() -> Path:
     """Directorio de datos del usuario, creado si no existe."""
     if sys.platform == "win32":

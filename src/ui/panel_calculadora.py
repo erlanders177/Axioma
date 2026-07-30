@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QEvent, Qt
 from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWidgets import (
     QComboBox, QGridLayout, QHBoxLayout, QLineEdit, QShortcut, QSplitter,
@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
 )
 
 from ..core import historial as hist
+from ..core import magnitudes
 from ..core.config import config
 from ..core.evaluador import ErrorExpresion, evaluar, parentesis_pendientes
 from ..core.formato import formatear
@@ -62,8 +63,13 @@ class PanelCalculadora(QWidget):
         self._teclas_alternas: list[tuple] = []
         #: Variables que define el usuario con «nombre = expresión».
         self.variables: dict[str, float] = {}
+        #: Expresiones ya calculadas, para recorrerlas con las flechas ↑/↓.
+        self._expresiones: list[str] = []
+        self._posicion_historial = 0
+        self._borrador = ""
         self._construir()
         self._atajos()
+        self._cargar_expresiones_previas()
 
     # ------------------------------------------------------------------ UI -- #
 
@@ -190,6 +196,63 @@ class PanelCalculadora(QWidget):
         escape = QShortcut(QKeySequence("Escape"), self, self.limpiar)
         escape.setContext(Qt.WidgetWithChildrenShortcut)
 
+        # Las flechas ↑/↓ recorren las expresiones anteriores, como en una
+        # terminal. Se filtran en la pantalla porque un QLineEdit no las usa.
+        self.pantalla.installEventFilter(self)
+
+    # ------------------------------------------------ historial de expresiones -- #
+
+    def eventFilter(self, objeto, evento):  # noqa: N802 (nombre impuesto por Qt)
+        if objeto is self.pantalla and evento.type() == QEvent.KeyPress:
+            if evento.key() == Qt.Key_Up:
+                self._recorrer_historial(-1)
+                return True
+            if evento.key() == Qt.Key_Down:
+                self._recorrer_historial(1)
+                return True
+        return super().eventFilter(objeto, evento)
+
+    def _cargar_expresiones_previas(self) -> None:
+        """Rellena la lista de flechas con lo que ya había guardado en disco."""
+        try:
+            entradas = hist.cargar("calculadora")
+        except hist.ErrorHistorial:
+            return
+        # `cargar` devuelve de la más reciente a la más antigua; aquí interesa el
+        # orden cronológico para que ↑ vaya hacia atrás en el tiempo.
+        for entrada in reversed(entradas):
+            expresion = (entrada.get("datos") or {}).get("expresion")
+            if expresion:
+                self._recordar(str(expresion))
+        self._posicion_historial = len(self._expresiones)
+
+    def _recordar(self, expresion: str) -> None:
+        """Añade una expresión al final, sin repetir la anterior."""
+        if not expresion or (self._expresiones and self._expresiones[-1] == expresion):
+            return
+        self._expresiones.append(expresion)
+        del self._expresiones[:-200]
+
+    def _recorrer_historial(self, salto: int) -> None:
+        if not self._expresiones:
+            return
+
+        # Al salir por primera vez de la línea actual se guarda lo escrito, para
+        # poder recuperarlo bajando del todo.
+        if self._posicion_historial == len(self._expresiones):
+            self._borrador = self.pantalla.text()
+
+        destino = self._posicion_historial + salto
+        destino = max(0, min(len(self._expresiones), destino))
+        if destino == self._posicion_historial:
+            return
+        self._posicion_historial = destino
+
+        texto = (self._borrador if destino == len(self._expresiones)
+                 else self._expresiones[destino])
+        self.pantalla.setText(texto)
+        self.pantalla.setCursorPosition(len(texto))
+
     # -------------------------------------------------------------- órdenes -- #
 
     def _pulsar(self, orden: str) -> None:
@@ -296,6 +359,17 @@ class PanelCalculadora(QWidget):
         # Se cierran los paréntesis pendientes para poder previsualizar mientras
         # el usuario sigue escribiendo.
         tentativa = cuerpo + ")" * parentesis_pendientes(cuerpo)
+
+        if magnitudes.contiene_unidades(tentativa):
+            try:
+                cantidad = magnitudes.evaluar(tentativa)
+            except magnitudes.ErrorMagnitud:
+                self.vista_previa.clear()
+                return
+            prefijo = f"{asignacion[0]} = " if asignacion else "= "
+            self.vista_previa.setText(prefijo + cantidad.texto(config["decimales"]))
+            return
+
         try:
             valor = evaluar(tentativa, self._modo, self._variables())
         except ErrorExpresion:
@@ -315,6 +389,12 @@ class PanelCalculadora(QWidget):
             self._asignar(*asignacion)
             return
 
+        # Las expresiones con unidades («5 km + 300 m») las resuelve el motor de
+        # magnitudes; el resto, el evaluador normal.
+        if magnitudes.contiene_unidades(expresion):
+            self._calcular_con_unidades(expresion)
+            return
+
         try:
             valor = evaluar(expresion, self._modo, self._variables())
         except ErrorExpresion as e:
@@ -327,9 +407,41 @@ class PanelCalculadora(QWidget):
         self.pantalla.setCursorPosition(len(texto_resultado))
         self.vista_previa.setText(f"{expresion} =")
 
+        self._recordar(expresion)
+        self._posicion_historial = len(self._expresiones)
+        self._borrador = ""
+
         operacion = f"{expresion} = {texto_resultado}"
         try:
             entrada = hist.guardar("calculadora", operacion, {
+                "expresion": expresion,
+                "resultado": texto_resultado,
+                "modo_angulo": self._modo,
+            })
+            self.historial.anadir(entrada)
+        except hist.ErrorHistorial as e:
+            aviso(self, str(e), "Historial")
+
+    def _calcular_con_unidades(self, expresion: str) -> None:
+        try:
+            cantidad = magnitudes.evaluar(expresion)
+        except magnitudes.ErrorMagnitud as e:
+            aviso(self, str(e), "Unidades")
+            return
+
+        texto_resultado = cantidad.texto(config["decimales"])
+        # `ans` guarda el número sin unidad, para poder seguir operando con él.
+        self.ultimo_resultado = cantidad.valor
+        self.pantalla.setText(texto_resultado)
+        self.pantalla.setCursorPosition(len(texto_resultado))
+        self.vista_previa.setText(f"{expresion} =")
+
+        self._recordar(expresion)
+        self._posicion_historial = len(self._expresiones)
+        self._borrador = ""
+
+        try:
+            entrada = hist.guardar("calculadora", f"{expresion} = {texto_resultado}", {
                 "expresion": expresion,
                 "resultado": texto_resultado,
                 "modo_angulo": self._modo,

@@ -15,10 +15,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
 from src import __autor__, __nombre__
-from src.core.rutas import archivo_datos
+from src.core.rutas import archivo_datos, icono
 
 
 def _configurar_registro() -> None:
@@ -30,6 +31,25 @@ def _configurar_registro() -> None:
             logging.StreamHandler(sys.stderr),
         ],
     )
+
+
+def _agrupar_en_barra_de_tareas() -> None:
+    """Hace que Windows use el icono de la aplicación en la barra de tareas.
+
+    Sin declarar un identificador propio, Windows agrupa la ventana bajo el
+    proceso que la lanza (``python.exe``) y muestra el icono de Python en lugar
+    del nuestro. Sólo aplica a Windows; en el resto de sistemas no hace nada.
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            f"Erlanders.{__nombre__}.{__nombre__}"
+        )
+    except (AttributeError, OSError):  # pragma: no cover - depende del sistema
+        pass
 
 
 def _instalar_gestor_de_errores() -> None:
@@ -66,6 +86,11 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName(__nombre__)
     app.setOrganizationName(__autor__)
+
+    ruta_icono = icono()
+    if ruta_icono is not None:
+        app.setWindowIcon(QIcon(str(ruta_icono)))
+    _agrupar_en_barra_de_tareas()
 
     _instalar_gestor_de_errores()
 

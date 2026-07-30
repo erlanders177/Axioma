@@ -9,9 +9,13 @@ a = Analysis(
     ['main.py'],
     pathex=['.'],
     binaries=[],
-    # El manual se abre desde la aplicación (F1), así que debe viajar dentro
-    # del ejecutable.
-    datas=[('docs/manual_usuario.html', 'docs')],
+    # El manual se abre desde la aplicación (F1) y el icono se carga en tiempo
+    # de ejecución, así que ambos deben viajar dentro del ejecutable.
+    datas=[
+        ('docs/manual_usuario.html', 'docs'),
+        ('assets/axioma.ico', 'assets'),
+        ('assets/axioma.png', 'assets'),
+    ],
     hiddenimports=[
         # PyInstaller no siempre detecta estos módulos, que se importan de forma
         # indirecta a través de matplotlib y sympy.
@@ -44,6 +48,7 @@ exe = EXE(
     a.datas,
     [],
     name='Axioma',
+    icon='assets/axioma.ico',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

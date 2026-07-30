@@ -63,7 +63,7 @@
 <main>
 
 <h1>Axioma</h1>
-<p class="lema">Calculadora científica multifunción · Manual de usuario · versión 3.0</p>
+<p class="lema">Calculadora científica multifunción · Manual de usuario · versión 3.1</p>
 
 <div class="indice">
   <strong>Contenido</strong>
@@ -115,6 +115,7 @@
   <tr><td><kbd>Ctrl</kbd>+<kbd>Q</kbd></td><td>Cerrar la aplicación</td></tr>
   <tr><td><kbd>Intro</kbd></td><td>Calcular / resolver en el módulo activo</td></tr>
   <tr><td><kbd>Esc</kbd></td><td>Limpiar la pantalla de la calculadora</td></tr>
+  <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Recorrer las operaciones anteriores (en la calculadora)</td></tr>
 </table>
 
 <!-- ==================================================================== -->
@@ -174,6 +175,40 @@
   (<code>pi</code>, <code>e</code>, <code>sin</code>, <code>ans</code>…).
 </div>
 
+<h3>Repetir operaciones anteriores</h3>
+<p>
+  Con el cursor en la pantalla, las flechas <kbd>↑</kbd> y <kbd>↓</kbd> recorren
+  las expresiones que ya ha calculado, igual que en una terminal. Lo que
+  estuviera escrito se recupera al bajar del todo.
+</p>
+
+<h3>Operar con unidades</h3>
+<p>
+  La calculadora entiende unidades directamente. Escriba
+  <code>5 km + 300 m</code> y obtendrá <code>5.3 km</code>.
+</p>
+<table>
+  <tr><th>Qué puede hacer</th><th>Ejemplo</th><th>Resultado</th></tr>
+  <tr><td>Sumar y restar la misma magnitud</td><td><code>1 h + 30 min</code></td><td>1.5 h</td></tr>
+  <tr><td>Multiplicar o dividir por un número</td><td><code>5 km * 3</code></td><td>15 km</td></tr>
+  <tr><td>Dividir dos magnitudes iguales</td><td><code>10 km / 2 km</code></td><td>5</td></tr>
+  <tr><td>Convertir</td><td><code>20 °C a °F</code></td><td>68 °F</td></tr>
+</table>
+<p>
+  Para convertir sirven <code>a</code>, <code>en</code>, <code>in</code>,
+  <code>to</code> y <code>→</code>. El resultado se da en la unidad del primer
+  operando: <code>300 m + 5 km</code> da metros, y <code>5 km + 300 m</code>,
+  kilómetros.
+</p>
+<div class="aviso">
+  <strong>Lo que no hace.</strong> No crea unidades derivadas:
+  <code>10 km / 2 h</code> avisa en lugar de inventar km/h. Muchas de esas
+  unidades ya existen en el módulo de <a href="#conversiones">Conversiones</a>.
+  Tampoco suma temperaturas (<code>20 °C + 5 °C</code>), porque las escalas
+  Celsius y Fahrenheit no empiezan en el cero absoluto y la suma no
+  significaría nada; convertirlas sí funciona.
+</div>
+
 <!-- ==================================================================== -->
 <h2 id="graficas">3. Gráficas de funciones</h2>
 <p>
@@ -220,6 +255,15 @@
   la gráfica sombrea en verde la zona donde se cumple la condición.
 </p>
 
+<h3 id="paso-a-paso">Resolver paso a paso</h3>
+<p>
+  Con la casilla <em>Resolver paso a paso</em> marcada, debajo del resultado
+  aparece el desarrollo completo: si es de primer grado, cómo se despeja; si es
+  de segundo, la factorización, el discriminante con su interpretación y la
+  fórmula aplicada. Al final se comprueba la solución sustituyéndola en la
+  ecuación original.
+</p>
+
 <!-- ==================================================================== -->
 <h2 id="sistemas">5. Sistemas de ecuaciones</h2>
 <p>Resuelve sistemas lineales de 2 a 10 ecuaciones, con cualquier número de incógnitas.</p>
@@ -237,6 +281,11 @@
   <tr><td>Incompatible</td><td>No hay ninguna solución.</td></tr>
 </table>
 <p>Además se muestran la matriz ampliada, los rangos y, si el sistema es cuadrado, el determinante.</p>
+<p>
+  Con la casilla <em>Método de Gauss paso a paso</em> se añade el desarrollo
+  completo: cada intercambio de filas, cada división por el pivote y cada
+  combinación lineal, con la matriz redibujada después de cada operación.
+</p>
 
 <!-- ==================================================================== -->
 <h2 id="calculo">6. Cálculo: derivadas, integrales y límites</h2>
@@ -254,6 +303,16 @@
   Los límites de integración admiten expresiones, no sólo números:
   <code>pi</code>, <code>2*pi</code>, <code>sqrt(2)</code>, <code>oo</code>…
 </div>
+
+<h3>La pestaña «Paso a paso»</h3>
+<p>
+  En derivadas e integrales, junto a la pestaña de resultado hay otra con el
+  desarrollo. En las <b>derivadas</b> se nombra la regla usada en cada nodo de la
+  expresión: regla del producto, de la cadena, de la potencia, derivada del
+  seno… En las <b>integrales</b> se indica el método (cambio de variable,
+  integración por partes, reescritura previa) y al final se comprueba el
+  resultado derivándolo.
+</p>
 
 <!-- ==================================================================== -->
 <h2 id="matrices">7. Matrices</h2>
@@ -380,6 +439,21 @@
   triángulo), la aplicación lo explica en lugar de dar un número sin sentido.
 </p>
 
+<h3>Cálculo inverso</h3>
+<p>
+  Responde a la pregunta al revés: <em>«sé que el área vale 50, ¿cuánto mide el
+  lado?»</em>. En el bloque inferior elija el resultado que conoce, escriba su
+  valor, indique qué dato quiere hallar y pulse <em>Resolver</em>. El valor
+  encontrado se escribe en su campo y la figura se recalcula, para que pueda
+  comprobarlo.
+</p>
+<div class="aviso">
+  Si la figura necesita varios datos, los demás deben estar rellenos: para hallar
+  la altura de un rectángulo a partir del área hace falta conocer la base.
+  Los datos que son números enteros (como el número de lados de un polígono) no
+  se pueden hallar por este método.
+</div>
+
 <!-- ==================================================================== -->
 <h2 id="conversiones">11. Conversiones de unidades</h2>
 <p>
@@ -476,7 +550,7 @@
 
 <footer>
   <p>
-    <strong>Axioma 3.0</strong> · calculadora científica multifunción<br>
+    <strong>Axioma 3.1</strong> · calculadora científica multifunción<br>
     Desarrollador: Aarón Aranda Torrijos (@erlanders177) —
     <a href="mailto:aaron.aranda.t@gmail.com">aaron.aranda.t@gmail.com</a><br>
     Proyecto: <a href="https://github.com/erlanders177/Axioma">github.com/erlanders177/Axioma</a><br>

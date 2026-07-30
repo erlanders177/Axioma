@@ -165,6 +165,37 @@ class TablaResultados(QTableWidget):
         return "\n".join(lineas)
 
 
+def formatear_pasos(pasos: list, ancho_sangria: int = 4) -> str:
+    """Convierte una lista de ``core.pasos.Paso`` en texto para mostrar.
+
+    Se numeran sólo los pasos de primer nivel: los anidados son detalles de la
+    regla que los contiene, no pasos independientes del desarrollo.
+    """
+    if not pasos:
+        return ""
+
+    lineas: list[str] = []
+    numero = 0
+    for paso in pasos:
+        sangria = " " * (ancho_sangria * paso.nivel)
+        if paso.nivel == 0:
+            numero += 1
+            cabecera = f"{numero}. {paso.titulo}" if paso.titulo else ""
+        else:
+            cabecera = f"· {paso.titulo}" if paso.titulo else ""
+
+        if cabecera:
+            lineas.append(f"{sangria}{cabecera}")
+        if paso.detalle:
+            lineas.append(f"{sangria}   {paso.detalle}")
+        if paso.expresion:
+            for linea in str(paso.expresion).splitlines():
+                lineas.append(f"{sangria}      {linea}")
+        lineas.append("")
+
+    return "\n".join(lineas).rstrip()
+
+
 # --------------------------------------------------------------------------- #
 # Panel de historial reutilizable
 # --------------------------------------------------------------------------- #

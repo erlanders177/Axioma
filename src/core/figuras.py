@@ -1477,6 +1477,157 @@ def calcular(nombre: str, valores: dict) -> list[Resultado]:
     return figura(nombre).calcular(valores)
 
 
+# --------------------------------------------------------------------------- #
+# Cálculo inverso
+# --------------------------------------------------------------------------- #
+
+#: Tolerancia relativa con la que se da por bueno el valor hallado.
+_TOLERANCIA = 1e-10
+#: Iteraciones máximas de la bisección. Con 200 se agota la precisión de un
+#: float mucho antes, así que sirve sólo de tope de seguridad.
+_MAX_ITERACIONES = 200
+
+
+def resolver_inverso(nombre: str, objetivo_etiqueta: str, objetivo_valor: float,
+                     incognita: str, conocidos: dict) -> float:
+    """Halla el parámetro ``incognita`` que produce el resultado pedido.
+
+    Responde a la pregunta que la gente hace de verdad: «sé que el área vale 50,
+    ¿cuánto mide el lado?».
+
+    Se resuelve numéricamente por bisección en lugar de despejar cada fórmula a
+    mano: hay 61 figuras con varios resultados cada una, y casi todas las
+    magnitudes (área, perímetro, volumen…) crecen de forma monótona con sus
+    dimensiones, que es la única condición que la bisección necesita.
+
+    Args:
+        nombre: figura del catálogo.
+        objetivo_etiqueta: qué resultado se conoce, p. ej. ``"Área"``.
+        objetivo_valor: cuánto vale ese resultado.
+        incognita: símbolo del parámetro que se busca.
+        conocidos: valores del resto de parámetros.
+
+    Raises:
+        ErrorFigura: si los datos no permiten hallar una solución.
+    """
+    fig = figura(nombre)
+
+    parametro = next((p for p in fig.parametros if p.simbolo == incognita), None)
+    if parametro is None:
+        raise ErrorFigura(f"«{incognita}» no es un dato de {nombre}")
+    if parametro.entero:
+        raise ErrorFigura(
+            f"«{parametro.etiqueta}» sólo admite números enteros: no se puede "
+            f"hallar por aproximación."
+        )
+    if objetivo_valor <= 0:
+        raise ErrorFigura("El valor buscado debe ser mayor que 0")
+
+    def evaluar(x: float) -> float | None:
+        """Valor del resultado objetivo cuando la incógnita vale ``x``."""
+        intento = dict(conocidos)
+        intento[incognita] = x
+        try:
+            resultados = fig.calcular(intento)
+        except (ErrorFigura, ValueError, ArithmeticError):
+            return None
+        for resultado in resultados:
+            if resultado.etiqueta == objetivo_etiqueta:
+                valor = float(resultado.valor)
+                return valor if math.isfinite(valor) else None
+        return None
+
+    inferior, superior = _acotar(evaluar, objetivo_valor, parametro)
+
+    # Bisección: en cada paso se descarta la mitad del intervalo.
+    for _ in range(_MAX_ITERACIONES):
+        medio = (inferior + superior) / 2
+        valor = evaluar(medio)
+        if valor is None:
+            raise ErrorFigura(
+                "No se pudo resolver: con esos datos la figura deja de ser válida "
+                "a mitad de la búsqueda."
+            )
+        if abs(valor - objetivo_valor) <= _TOLERANCIA * max(1.0, abs(objetivo_valor)):
+            return medio
+        if superior - inferior <= _TOLERANCIA * max(1.0, medio):
+            return medio
+        if valor < objetivo_valor:
+            inferior = medio
+        else:
+            superior = medio
+
+    return (inferior + superior) / 2
+
+
+def _acotar(evaluar, objetivo: float, parametro: Parametro) -> tuple[float, float]:
+    """Busca un intervalo donde el resultado pase por el valor objetivo."""
+    minimo = max(parametro.minimo, 0.0)
+    inferior = minimo + 1e-9
+
+    valor_inferior = evaluar(inferior)
+    if valor_inferior is None:
+        raise ErrorFigura(
+            "No se pudo resolver: faltan datos o los que hay no describen una "
+            "figura válida."
+        )
+    if valor_inferior > objetivo:
+        raise ErrorFigura(
+            f"No hay solución: incluso con «{parametro.etiqueta}» casi nulo, el "
+            f"resultado ya supera el valor buscado."
+        )
+
+    # Se duplica el extremo superior hasta rebasar el objetivo.
+    superior = max(1.0, inferior * 2)
+    for _ in range(200):
+        if superior > parametro.maximo:
+            superior = parametro.maximo
+        valor = evaluar(superior)
+        if valor is not None and valor >= objetivo:
+            return inferior, superior
+        if valor is not None:
+            inferior = superior
+        if superior >= parametro.maximo:
+            break
+        superior *= 2
+
+    raise ErrorFigura(
+        f"No se encontró ningún valor de «{parametro.etiqueta}» que dé ese "
+        f"resultado. Compruebe que el dato conocido es correcto."
+    )
+
+
+def resultados_invertibles(nombre: str) -> list[str]:
+    """Etiquetas de resultado que sirven como dato conocido en el modo inverso.
+
+    Se excluyen los adimensionales (ángulos fijos, recuentos, fracciones), que no
+    dependen del tamaño de la figura y por tanto no permiten deducirlo.
+    """
+    fig = figura(nombre)
+    valores = {p.simbolo: p.predeterminado for p in fig.parametros}
+    try:
+        base = fig.calcular(valores)
+    except (ErrorFigura, ValueError, ArithmeticError):
+        return []
+
+    # Se recalcula con la figura ampliada: lo que no cambia, no sirve de pista.
+    escalados = {}
+    for p in fig.parametros:
+        escalados[p.simbolo] = valores[p.simbolo] * (1.0 if p.entero else 1.3)
+    try:
+        ampliada = fig.calcular(escalados)
+    except (ErrorFigura, ValueError, ArithmeticError):
+        return []
+
+    etiquetas = []
+    for antes, despues in zip(base, ampliada):
+        if antes.etiqueta != despues.etiqueta or antes.unidad not in ("u", "u²", "u³"):
+            continue
+        if abs(float(despues.valor) - float(antes.valor)) > 1e-9:
+            etiquetas.append(antes.etiqueta)
+    return etiquetas
+
+
 def resumen() -> str:
     planas = len(GRUPOS.get(_PLANAS, []))
     cuerpos = len(GRUPOS.get(_CUERPOS, []))

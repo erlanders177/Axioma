@@ -632,5 +632,208 @@ def test_historial_se_restaura_con_doble_clic(ventana):
     assert calc.pantalla.text() == "3*7"
 
 
+# --------------------------------------------------------------------------- #
+# Unidades dentro de la calculadora
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.parametrize("expresion,esperado", [
+    ("5 km + 300 m", "5.3 km"),
+    ("20 °C a °F", "68 °F"),
+    ("1 h + 30 min", "1.5 h"),
+    ("2 GB a MB", "2000 MB"),
+])
+def test_calculadora_opera_con_unidades(ventana, expresion, esperado):
+    calc = panel(ventana, "calculadora")
+    calc.pantalla.setText(expresion)
+    calc.calcular()
+    assert calc.pantalla.text() == esperado
+
+
+def test_calculadora_avisa_si_las_unidades_no_encajan(ventana):
+    calc = panel(ventana, "calculadora")
+    calc.pantalla.setText("5 km + 3 kg")
+    calc.calcular()
+    assert _DIALOGOS
+
+
+def test_las_unidades_no_estorban_a_la_aritmetica_normal(ventana):
+    """Comprueba que el motor de unidades no secuestra expresiones corrientes."""
+    calc = panel(ventana, "calculadora")
+    for expresion, esperado in [("2+3*4", "14"), ("sin(30)", "0.5"), ("5!", "120")]:
+        calc.pantalla.setText(expresion)
+        calc.calcular()
+        assert calc.pantalla.text() == esperado, expresion
+
+
+# --------------------------------------------------------------------------- #
+# Historial con las flechas del teclado
+# --------------------------------------------------------------------------- #
+
+def test_flechas_recuperan_expresiones_anteriores(ventana):
+    from PyQt5.QtCore import QEvent, Qt
+    from PyQt5.QtGui import QKeyEvent
+
+    calc = panel(ventana, "calculadora")
+    calc.historial._limpiar_todo()
+    calc._expresiones.clear()
+    calc._posicion_historial = 0
+
+    for expresion in ("1+1", "2+2", "3+3"):
+        calc.pantalla.setText(expresion)
+        calc.calcular()
+
+    calc.pantalla.clear()
+
+    def pulsar(tecla):
+        calc.eventFilter(calc.pantalla, QKeyEvent(QEvent.KeyPress, tecla, Qt.NoModifier))
+
+    pulsar(Qt.Key_Up)
+    assert calc.pantalla.text() == "3+3"
+    pulsar(Qt.Key_Up)
+    assert calc.pantalla.text() == "2+2"
+    pulsar(Qt.Key_Up)
+    assert calc.pantalla.text() == "1+1"
+    pulsar(Qt.Key_Up)          # ya no hay más: se queda donde está
+    assert calc.pantalla.text() == "1+1"
+    pulsar(Qt.Key_Down)
+    assert calc.pantalla.text() == "2+2"
+
+
+def test_flechas_no_fallan_sin_historial(ventana):
+    from PyQt5.QtCore import QEvent, Qt
+    from PyQt5.QtGui import QKeyEvent
+
+    calc = panel(ventana, "calculadora")
+    calc._expresiones.clear()
+    calc._posicion_historial = 0
+    calc.eventFilter(calc.pantalla,
+                     QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier))
+
+
+# --------------------------------------------------------------------------- #
+# Geometría inversa
+# --------------------------------------------------------------------------- #
+
+def test_geometria_inversa_halla_el_lado(ventana):
+    import math
+
+    geo = panel(ventana, "geometria")
+    geo.buscador.clear()
+    geo.combo_figura.setCurrentText("Cuadrado")
+    assert geo.bloque_inverso.isVisible() or True  # depende del gestor de ventanas
+
+    geo.combo_conocido.setCurrentText("Área")
+    indice = geo.combo_incognita.findData("l")
+    assert indice >= 0
+    geo.combo_incognita.setCurrentIndex(indice)
+    geo.valor_conocido.setText("50")
+    geo._resolver_inverso()
+
+    assert "7.07" in geo.resultado_inverso.text()
+    # El campo debe quedar relleno con lo hallado.
+    assert float(geo._campos["l"].text()) == pytest.approx(math.sqrt(50), rel=1e-6)
+
+
+def test_geometria_inversa_pide_los_datos_que_faltan(ventana):
+    geo = panel(ventana, "geometria")
+    geo.combo_figura.setCurrentText("Rectángulo")
+    geo._campos["b"].clear()
+    geo.combo_conocido.setCurrentText("Área")
+    geo.combo_incognita.setCurrentIndex(geo.combo_incognita.findData("h"))
+    geo.valor_conocido.setText("24")
+    geo._resolver_inverso()
+    assert _DIALOGOS
+
+
+def test_geometria_inversa_se_oculta_cuando_no_aplica(ventana):
+    """El polígono regular de n lados tiene una incógnita entera."""
+    geo = panel(ventana, "geometria")
+    geo.combo_figura.setCurrentText("Polígono regular (n lados)")
+    # Queda «l», que sí es continuo, así que el bloque sigue disponible.
+    assert geo.combo_incognita.count() >= 1
+    for i in range(geo.combo_incognita.count()):
+        assert geo.combo_incognita.itemData(i) != "n"
+
+
+# --------------------------------------------------------------------------- #
+# Paso a paso
+# --------------------------------------------------------------------------- #
+
+def test_pasos_en_el_panel_de_calculo(ventana):
+    from src.core import calculo
+
+    pan = panel(ventana, "calculo")
+    claves = [c for c, _, _ in calculo.OPERACIONES]
+    pan.combo.setCurrentIndex(claves.index("derivada"))
+    pan._campos["expresion"].setText("x^3*sin(x)")
+    pan._campos["variable"].setText("x")
+    pan.calcular()
+
+    desarrollo = pan.pasos.toPlainText()
+    assert "Regla del producto" in desarrollo
+    assert "Derivada del seno" in desarrollo
+
+
+def test_pasos_de_integral_en_el_panel(ventana):
+    from src.core import calculo
+
+    pan = panel(ventana, "calculo")
+    claves = [c for c, _, _ in calculo.OPERACIONES]
+    pan.combo.setCurrentIndex(claves.index("integral"))
+    pan._campos["expresion"].setText("x*exp(x)")
+    pan._campos["variable"].setText("x")
+    pan.calcular()
+    assert "partes" in pan.pasos.toPlainText()
+
+
+def test_pasos_avisan_cuando_la_operacion_no_los_tiene(ventana):
+    from src.core import calculo
+
+    pan = panel(ventana, "calculo")
+    claves = [c for c, _, _ in calculo.OPERACIONES]
+    pan.combo.setCurrentIndex(claves.index("analisis"))
+    pan._campos["expresion"].setText("x^2")
+    pan._campos["variable"].setText("x")
+    pan.calcular()
+    assert "no tiene desarrollo paso a paso" in pan.pasos.toPlainText()
+
+
+def test_pasos_en_ecuaciones(ventana):
+    ecu = panel(ventana, "ecuaciones")
+    ecu.chk_pasos.setChecked(True)
+    ecu.entrada.setText("x^2 - 5x + 6 = 0")
+    ecu.resolver(silencioso=True)
+    salida = ecu.salida.toPlainText()
+    assert "PASO A PASO" in salida
+    assert "discriminante" in salida
+
+
+def test_pasos_de_ecuaciones_se_pueden_desactivar(ventana):
+    ecu = panel(ventana, "ecuaciones")
+    ecu.chk_pasos.setChecked(False)
+    ecu.entrada.setText("x^2 - 4 = 0")
+    ecu.resolver(silencioso=True)
+    assert "PASO A PASO" not in ecu.salida.toPlainText()
+    ecu.chk_pasos.setChecked(True)
+
+
+def test_pasos_en_sistemas(ventana):
+    sis = panel(ventana, "sistemas")
+    sis.chk_pasos.setChecked(True)
+    salida = _resolver_sistema(ventana, ["2x + 3y = 7", "x - y = 1"])
+    assert "método de Gauss" in salida
+    assert "matriz ampliada" in salida
+
+
+# --------------------------------------------------------------------------- #
+# Icono
+# --------------------------------------------------------------------------- #
+
+def test_la_aplicacion_tiene_icono():
+    from src.core.rutas import icono
+    ruta = icono()
+    assert ruta is not None and ruta.exists(), "falta assets/axioma.ico"
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))

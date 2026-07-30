@@ -405,6 +405,9 @@ def hoja_de_estilos(p: Paleta) -> str:
         background: transparent;
         color: {p.texto_suave};
         padding: 8px 16px;
+        /* Sin un ancho mínimo, Qt calcula el tamaño de la pestaña sin tener en
+           cuenta el relleno del QSS y recorta el texto. */
+        min-width: 90px;
         margin-right: 2px;
         border-top-left-radius: 8px;
         border-top-right-radius: 8px;
