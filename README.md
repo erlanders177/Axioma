@@ -103,6 +103,19 @@ python main.py
 
 Requiere **Python 3.10 o superior**. Funciona en Windows, macOS y Linux.
 
+Para abrirlo **con doble clic** en lugar de desde la terminal, use
+`Axioma.pyw`: la extensión `.pyw` hace que Windows lo ejecute con `pythonw.exe`
+y la aplicación arranca sin la ventana negra de consola detrás.
+
+### Acceso directo en el escritorio
+
+```bash
+python tools/crear_acceso_directo.py
+```
+
+Crea un acceso directo con el icono de la aplicación. Apunta al ejecutable de
+`dist/` si lo ha generado, y si no al lanzador `Axioma.pyw`.
+
 ### Generar el ejecutable
 
 ```bash
@@ -111,7 +124,10 @@ python tools/generar_icono.py    # sólo si cambia el icono
 pyinstaller Axioma.spec
 ```
 
-El resultado queda en `dist/Axioma.exe`.
+El resultado queda en `dist/Axioma.exe` (unos 70 MB). Esa carpeta **no está en
+el repositorio**: los ejecutables se publican en
+[Releases](https://github.com/erlanders177/Axioma/releases), no en el control de
+versiones.
 
 ---
 
@@ -167,11 +183,13 @@ El manual completo está en [`docs/manual_usuario.html`](docs/manual_usuario.htm
 ```
 Axioma/
 ├── main.py                     punto de entrada
+├── Axioma.pyw                  lanzador de doble clic (sin consola)
 ├── Axioma.spec                 receta de PyInstaller
 ├── requirements.txt
 ├── assets/                     icono de la aplicación
 ├── tools/
-│   └── generar_icono.py        regenera el icono de forma reproducible
+│   ├── generar_icono.py        regenera el icono de forma reproducible
+│   └── crear_acceso_directo.py acceso directo en el escritorio
 ├── docs/
 │   ├── manual_usuario.html     manual (F1 desde la aplicación)
 │   └── capturas/
