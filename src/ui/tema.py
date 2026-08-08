@@ -503,14 +503,27 @@ def hoja_de_estilos(p: Paleta) -> str:
         border-radius: 6px;
         padding: 6px;
     }}
+    /* Los separadores son para agarrarlos con el ratón y repartir el sitio:
+       con un pixel de ancho había que acertar con el cursor. */
     QSplitter::handle {{
         background-color: {p.borde};
     }}
+    QSplitter::handle:hover {{
+        background-color: {p.acento};
+    }}
     QSplitter::handle:horizontal {{
-        width: 1px;
+        width: 7px;
     }}
     QSplitter::handle:vertical {{
-        height: 1px;
+        height: 7px;
+    }}
+    QMainWindow::separator {{
+        background-color: {p.borde};
+        width: 7px;
+        height: 7px;
+    }}
+    QMainWindow::separator:hover {{
+        background-color: {p.acento};
     }}
     QMessageBox {{
         background-color: {p.fondo_panel};

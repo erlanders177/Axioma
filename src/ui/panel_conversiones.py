@@ -229,7 +229,7 @@ class PanelConversiones(PanelModulo):
         except uni.ErrorConversion:
             filas = []
         self.tabla.mostrar([
-            (unidad.etiqueta, formatear(v, decimales)) for unidad, v in filas
+            (unidad.etiqueta, formatear(v, decimales), v) for unidad, v in filas
         ])
 
     def convertir(self) -> None:

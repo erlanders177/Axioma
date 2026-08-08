@@ -63,7 +63,7 @@
 <main>
 
 <h1>Axioma</h1>
-<p class="lema">Calculadora científica multifunción · Manual de usuario · versión 3.4</p>
+<p class="lema">Calculadora científica multifunción · Manual de usuario · versión 3.5</p>
 
 <div class="indice">
   <strong>Contenido</strong>
@@ -165,6 +165,38 @@
   se rechaza: si se admitiera, usar <code>alto</code> en un campo en centímetros
   valdría 50 cm sin avisar. Convierta antes y use el número.
 </div>
+
+<h3 id="usar">Usar el resultado de un apartado en otro</h3>
+<p>
+  Haga <strong>doble clic</strong> en cualquier fila de resultados: se le
+  propone un nombre y ese valor queda guardado como variable. A partir de ahí
+  vale en los campos de cualquier apartado, en la calculadora, en la barra y
+  dentro de una ecuación.
+</p>
+<p>
+  Calcule el volumen de un cilindro en Geometría, guárdelo como
+  <code>volumen</code>, y escriba <code>x^2 = volumen</code> en Ecuaciones: se
+  resuelve.
+</p>
+<ul>
+  <li>En las salidas de texto (ecuaciones, matrices, pasos, gráficas) seleccione
+      el número y use el menú del botón derecho.</li>
+  <li>Se guarda el <b>valor exacto</b>, no el que se ve. Lo que aparece en
+      pantalla va redondeado a los decimales configurados, y arrastrar ese
+      redondeo a los cálculos siguientes es lo que se quiere evitar.</li>
+</ul>
+<div class="aviso">
+  Si define una variable con el mismo nombre que la incógnita —guardar
+  <code>x</code> y luego resolver <code>x² = 4</code>— la incógnita se respeta:
+  no se sustituye si eso dejaría la ecuación sin nada que resolver.
+</div>
+
+<h3>Repartir el sitio entre apartados</h3>
+<p>
+  Ponga el cursor en el <strong>borde entre dos bloques</strong>: se ilumina.
+  Púlselo y arrastre a izquierda o derecha para dar sitio a uno quitándoselo al
+  otro. Lo mismo entre el panel y su historial, arrastrando en horizontal.
+</p>
 
 <h3>Los campos aceptan más que números</h3>
 <p>
@@ -710,7 +742,7 @@
 
 <footer>
   <p>
-    <strong>Axioma 3.4</strong> · calculadora científica multifunción<br>
+    <strong>Axioma 3.5</strong> · calculadora científica multifunción<br>
     Desarrollador: Aarón Aranda Torrijos (@erlanders177) —
     <a href="mailto:aaron.aranda.t@gmail.com">aaron.aranda.t@gmail.com</a><br>
     Proyecto: <a href="https://github.com/erlanders177/Axioma">github.com/erlanders177/Axioma</a><br>

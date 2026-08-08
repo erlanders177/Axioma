@@ -498,3 +498,52 @@ def test_de_moivre():
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))
+
+
+# --------------------------------------------------------------------------- #
+# Las variables de un apartado valen en los demás
+# --------------------------------------------------------------------------- #
+
+def test_una_variable_de_varias_letras_no_se_parte_en_factores():
+    """«volumen» era v·o·l·u·m·e·n por la multiplicación implícita."""
+    from src.core import simbolico as sim
+    from src.core import variables
+
+    variables.borrar_todas()
+    variables.definir("volumen", 392.7)
+    try:
+        expresion = sim.analizar("2*volumen")
+        assert expresion.free_symbols == {sim.sp.Symbol("volumen")}
+    finally:
+        variables.borrar_todas()
+
+
+def test_la_variable_guardada_entra_en_la_ecuacion():
+    from src.core import simbolico as sim
+    from src.core import variables
+
+    variables.borrar_todas()
+    variables.definir("volumen", 100.0)
+    try:
+        izq, der = sim.analizar_igualdad("x^2 = volumen")
+        assert not (izq - der).free_symbols - {sim.sp.Symbol("x")}
+        # El valor entra como número en coma flotante, así que las raíces salen
+        # como 10.0000000000000 y no como el entero 10.
+        assert [float(s) for s in sim.sp.solve(izq - der)] == [-10.0, 10.0]
+    finally:
+        variables.borrar_todas()
+
+
+def test_no_se_sustituye_si_eso_deja_la_ecuacion_sin_incognita():
+    """Quien define «x» y luego resuelve en «x» no debe quedarse sin ecuación."""
+    from src.core import simbolico as sim
+    from src.core import variables
+
+    variables.borrar_todas()
+    variables.definir("x", 7.0)
+    try:
+        izq, der = sim.analizar_igualdad("x^2 = 4")
+        assert sim.sp.Symbol("x") in (izq - der).free_symbols
+        assert sim.sp.solve(izq - der) == [-2, 2]
+    finally:
+        variables.borrar_todas()

@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (
 
 from ..core import matrices as mat
 from .comunes import PanelModulo, aviso, boton, etiqueta, separador, tarjeta
+from .usar_resultado import permitir_usar_valores
 
 EJEMPLOS = {
     "A": "1  2  3\n4  5  6\n7  8 10",
@@ -143,6 +144,7 @@ class PanelMatrices(PanelModulo):
         marco, col = tarjeta()
         col.addWidget(etiqueta("Resultado", "seccion"))
         self.salida = QPlainTextEdit()
+        permitir_usar_valores(self.salida, "resultado")
         self.salida.setProperty("clase", "mono")
         fuente = QFont("Consolas")
         fuente.setStyleHint(QFont.Monospace)

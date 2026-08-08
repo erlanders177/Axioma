@@ -32,6 +32,7 @@ from . import tema
 from .apartado import Apartado
 from .barra_calculo import BarraCalculo
 from .comunes import boton, etiqueta
+from .usar_resultado import senales
 from .panel_ajuste import PanelAjuste
 from .panel_bases import PanelBases
 from .panel_calculadora import PanelCalculadora
@@ -157,6 +158,9 @@ class VentanaPrincipal(QMainWindow):
         self.barra = BarraCalculo()
         self.barra.calculado.connect(self._guardar_calculo_de_la_barra)
         self.barra.variables_cambiadas.connect(self._avisar_de_las_variables)
+        # Guardar un resultado como variable desde cualquier apartado llega por
+        # aquí, sin que cada panel tenga que reenviar la señal hacia arriba.
+        senales.variables_cambiadas.connect(self._avisar_de_las_variables)
         columna.addWidget(self.barra)
 
         raiz.addWidget(contenedor, 1)
@@ -468,6 +472,7 @@ class VentanaPrincipal(QMainWindow):
 
     def _avisar_de_las_variables(self) -> None:
         """Permite a los paneles reaccionar si dependen de las variables."""
+        self.barra._refrescar_variables()
         for panel in self._paneles.values():
             if hasattr(panel, "variables_actualizadas"):
                 panel.variables_actualizadas()

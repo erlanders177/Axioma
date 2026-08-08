@@ -28,6 +28,7 @@ from .comunes import (
     PanelModulo,
     aviso, boton, etiqueta, formatear_pasos, separador, tarjeta,
 )
+from .usar_resultado import permitir_usar_valores
 from .grafica import CICLO, PanelGrafica, cortar_saltos, muestrear
 
 EJEMPLOS = [
@@ -126,6 +127,7 @@ class PanelEcuaciones(PanelModulo):
         col.addWidget(separador())
 
         self.salida = QPlainTextEdit()
+        permitir_usar_valores(self.salida, "solución")
         self.salida.setProperty("clase", "mono")
         self.salida.setReadOnly(True)
         self.salida.setMinimumHeight(120)
@@ -167,8 +169,11 @@ class PanelEcuaciones(PanelModulo):
         if not derecha.strip():
             derecha = "0"
 
-        expr_izq = sim.analizar(izquierda)
-        expr_der = sim.analizar(derecha)
+        # Las variables guardadas desde otro apartado entran ya como números:
+        # «x^2 = volumen» debe resolverse, no quejarse de dos incógnitas.
+        expr_izq, expr_der = sim.sustituir_variables(
+            sim.analizar(izquierda), sim.analizar(derecha)
+        )
 
         # Las incógnitas se toman de los dos lados **antes** de simplificar: en
         # «x + 1 = x + 2» la diferencia es la constante −1, pero la ecuación sí

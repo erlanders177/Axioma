@@ -158,11 +158,22 @@ class CampoNumerico(QLineEdit):
 
 
 class TablaResultados(QTableWidget):
-    """Tabla de dos columnas (magnitud, valor) para mostrar resultados."""
+    """Tabla de dos columnas (magnitud, valor) para mostrar resultados.
+
+    Un doble clic en una fila guarda ese resultado como variable compartida, que
+    es la forma de usarlo en otro apartado sin copiar el número a mano.
+    """
 
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(0, 2, padre)
         self.setHorizontalHeaderLabels(["Magnitud", "Valor"])
+        self.setToolTip(
+            "Doble clic en un resultado para guardarlo como variable y usarlo "
+            "en otros apartados."
+        )
+        self.cellDoubleClicked.connect(self._usar_la_fila)
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._menu)
         self.verticalHeader().setVisible(False)
         self.setAlternatingRowColors(True)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -177,17 +188,60 @@ class TablaResultados(QTableWidget):
         cabecera.setMaximumSectionSize(340)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-    def mostrar(self, filas: list[tuple[str, str]]) -> None:
+    def mostrar(self, filas: list[tuple]) -> None:
+        """Muestra (magnitud, texto) o (magnitud, texto, valor exacto).
+
+        El valor exacto, si se da, es el que se reutiliza al guardar el
+        resultado como variable: el texto va redondeado a los decimales
+        configurados, y arrastrar ese redondeo a los cálculos siguientes es
+        justo lo que se quiere evitar.
+        """
         self.setRowCount(len(filas))
-        for i, (magnitud, valor) in enumerate(filas):
+        for i, fila in enumerate(filas):
+            magnitud, valor = fila[0], fila[1]
             self.setItem(i, 0, QTableWidgetItem(magnitud))
             celda = QTableWidgetItem(valor)
+            if len(fila) > 2 and isinstance(fila[2], (int, float)):
+                celda.setData(Qt.UserRole, float(fila[2]))
             celda.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             fuente = QFont("Consolas")
             fuente.setStyleHint(QFont.Monospace)
             celda.setFont(fuente)
             self.setItem(i, 1, celda)
         self.resizeRowsToContents()
+
+    # -- llevar un resultado a otro apartado ------------------------------- #
+
+    def _fila(self, indice: int) -> tuple[str, str]:
+        magnitud = self.item(indice, 0)
+        valor = self.item(indice, 1)
+        return (magnitud.text() if magnitud else ""), (valor.text() if valor else "")
+
+    def _usar_la_fila(self, fila: int, _columna: int = 0) -> None:
+        from .usar_resultado import guardar_como_variable
+
+        etiqueta, texto = self._fila(fila)
+        celda = self.item(fila, 1)
+        exacto = celda.data(Qt.UserRole) if celda is not None else None
+        guardar_como_variable(self, etiqueta, exacto if exacto is not None else texto)
+
+    def _menu(self, punto) -> None:
+        from PyQt5.QtWidgets import QApplication, QMenu
+
+        fila = self.rowAt(punto.y())
+        if fila < 0:
+            return
+        etiqueta, valor = self._fila(fila)
+        menu = QMenu(self)
+        usar = menu.addAction(f"Usar «{etiqueta}» como variable…")
+        copiar = menu.addAction("Copiar el valor")
+        elegida = menu.exec_(self.viewport().mapToGlobal(punto))
+        if elegida is usar:
+            self._usar_la_fila(fila)
+        elif elegida is copiar:
+            portapapeles = QApplication.clipboard()
+            if portapapeles is not None:
+                portapapeles.setText(valor)
 
     def limpiar(self) -> None:
         self.setRowCount(0)

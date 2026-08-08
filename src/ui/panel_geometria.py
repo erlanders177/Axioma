@@ -435,7 +435,9 @@ class PanelGeometria(PanelModulo):
 
         decimales = config["decimales"]
         self.tabla.mostrar([
-            (r.etiqueta, formatear(r.valor, decimales, unidad=self._con_unidad(r.unidad)))
+            (r.etiqueta,
+             formatear(r.valor, decimales, unidad=self._con_unidad(r.unidad)),
+             r.valor)
             for r in resultados
         ])
 

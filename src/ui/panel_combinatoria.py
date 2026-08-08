@@ -26,6 +26,7 @@ from .comunes import (
     PanelModulo,
     CampoNumerico, aviso, boton, etiqueta, separador, tarjeta,
 )
+from .usar_resultado import permitir_usar_valores
 
 #: Por encima de este valor no se calcula el factorial exacto (tardaría demasiado
 #: y el resultado tendría cientos de miles de dígitos).
@@ -110,6 +111,7 @@ class PanelCombinatoria(PanelModulo):
         marco_salida, col_salida = tarjeta()
         col_salida.addWidget(etiqueta("Resultado", "seccion"))
         self.salida = QPlainTextEdit()
+        permitir_usar_valores(self.salida, "resultado")
         self.salida.setProperty("clase", "mono")
         self.salida.setReadOnly(True)
         self.salida.setLineWrapMode(QPlainTextEdit.WidgetWidth)

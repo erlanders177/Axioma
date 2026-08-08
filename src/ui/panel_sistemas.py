@@ -36,6 +36,7 @@ from .comunes import (
     PanelModulo,
     aviso, boton, etiqueta, formatear_pasos, tarjeta,
 )
+from .usar_resultado import permitir_usar_valores
 
 TRANSFORMACIONES = standard_transformations + (
     implicit_multiplication_application,
@@ -128,6 +129,7 @@ class PanelSistemas(PanelModulo):
         marco_salida, col_salida = tarjeta()
         col_salida.addWidget(etiqueta("Resultado", "seccion"))
         self.salida = QPlainTextEdit()
+        permitir_usar_valores(self.salida, "solución")
         self.salida.setProperty("clase", "mono")
         self.salida.setReadOnly(True)
         self.salida.setPlaceholderText(

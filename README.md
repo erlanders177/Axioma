@@ -69,6 +69,12 @@ al mismo tiempo, no una detrás de otra.
 Cerrar un apartado no borra lo escrito, y la disposición se guarda: la
 aplicación vuelve a abrirse tal como se dejó.
 
+**Lo que sale en un apartado se usa en los demás.** Doble clic en un resultado
+y se guarda como variable compartida, con su valor exacto. Calcule el volumen de
+un cilindro en Geometría, guárdelo como `volumen`, y escriba `x^2 = volumen` en
+Ecuaciones: se resuelve. En las salidas de texto se selecciona el número y se usa
+el menú del botón derecho.
+
 **Una barra de cálculo bajo la calculadora.** Si necesita saber cuánto vale
 `5*sin(30)` sin abandonar lo que está haciendo, lo escribe ahí. Lo que calcula
 **va al historial del apartado en el que está**, no a un cajón común, y las
@@ -245,6 +251,7 @@ Axioma/
 │       ├── ventana_principal.py
 │       ├── panel_*.py          un panel por módulo
 │       ├── apartado.py        un módulo con su historial, encajable
+│       ├── usar_resultado.py  llevar un resultado de un apartado a otro
 │       ├── barra_calculo.py    barra de cálculo bajo la calculadora
 │       ├── grafica.py          lienzo de matplotlib compartido
 │       ├── visualizador.py     dibujo 2D/3D de figuras
@@ -270,7 +277,7 @@ pip install pytest
 python -m pytest tests/ -q
 ```
 
-495 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
+502 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
 unidades, las 61 figuras contra resultados conocidos, entradas maliciosas
 bloqueadas en el evaluador, resultados de libro comprobados (la serie de Fourier
 de x, la precisión relativa de Euler frente a Runge-Kutta) y los dieciséis

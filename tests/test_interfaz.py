@@ -8,6 +8,7 @@ Ejecutar con:  python -m pytest tests/test_interfaz.py
 
 from __future__ import annotations
 
+import math
 import os
 import sys
 import tempfile
@@ -1255,3 +1256,70 @@ def test_la_barra_no_guarda_variables_con_unidad(ventana):
     ventana.barra.calcular()
     assert "alto" not in variables.valores()
     assert "unidad" in ventana.barra.resultado.text().lower()
+
+
+# --------------------------------------------------------------------------- #
+# Usar el resultado de un apartado en otro
+# --------------------------------------------------------------------------- #
+
+
+def test_numero_de_extrae_el_valor_del_resultado_formateado():
+    from src.ui.usar_resultado import numero_de
+
+    assert numero_de("392.699 cm³") == 392.699
+    assert numero_de("-2.5e3 J") == -2500.0
+    assert numero_de("x₁ = 2.00000") == 2.0
+    assert numero_de("sin solución") is None
+    assert numero_de("") is None
+
+
+def test_nombre_sugerido_es_escribible():
+    from src.ui.usar_resultado import nombre_sugerido
+
+    assert nombre_sugerido("Área lateral") == "area_lateral"
+    assert nombre_sugerido("Volumen") == "volumen"
+    # Un nombre que empezara por dígito no se podría escribir en un campo.
+    assert nombre_sugerido("2º momento").isidentifier()
+
+
+def test_el_resultado_de_geometria_sirve_en_otro_apartado(ventana, monkeypatch):
+    """El caso que motiva todo: el volumen de una figura, dentro de una ecuación."""
+    from src.core import variables
+    from src.ui import usar_resultado
+
+    variables.borrar_todas()
+    ventana.cerrar_todos()
+    ventana.abrir("geometria")
+
+    panel = ventana._paneles["geometria"]
+    panel.combo_figura.setCurrentText("Cilindro")
+    panel._campos["r"].setText("5")
+    panel._campos["h"].setText("5")
+    panel.calcular(silencioso=True)
+
+    # El usuario hace doble clic en «Volumen» y acepta el nombre propuesto.
+    monkeypatch.setattr(usar_resultado.QInputDialog, "getText",
+                        lambda *a, **k: ("volumen", True))
+    panel.tabla._usar_la_fila(0)
+
+    assert "volumen" in variables.valores()
+    # El valor guardado es el exacto, no el redondeado que se ve en la tabla:
+    # π·5²·5 = 392.6990816987…, no 392.699.
+    assert variables.valores()["volumen"] == pytest.approx(math.pi * 25 * 5, rel=1e-12)
+    # Y desde ese momento vale en cualquier campo de cualquier apartado.
+    ventana.barra.entrada.setText("volumen / 2")
+    ventana.barra.calcular()
+    assert ventana.barra.ultimo_resultado == pytest.approx(
+        variables.valores()["volumen"] / 2
+    )
+    variables.borrar_todas()
+
+
+def test_no_se_guarda_como_variable_lo_que_no_es_un_numero(ventana, monkeypatch):
+    from src.ui import usar_resultado
+
+    avisos = []
+    monkeypatch.setattr(usar_resultado.QMessageBox, "information",
+                        lambda *a, **k: avisos.append(a))
+    assert usar_resultado.guardar_como_variable(ventana, "nada", "sin solución") is None
+    assert avisos, "debería avisar en vez de guardar un valor inventado"

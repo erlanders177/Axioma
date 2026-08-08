@@ -14,6 +14,7 @@ from ..core import simbolico as sim
 from ..core.config import config
 from . import tema
 from .comunes import PanelModulo, CampoNumerico, aviso, boton, etiqueta, separador, tarjeta
+from .usar_resultado import permitir_usar_valores
 from .grafica import CICLO, PanelGrafica, cortar_saltos, muestrear
 
 MAX_FUNCIONES = 4
@@ -136,6 +137,7 @@ class PanelGraficador(PanelModulo):
         marco_info, col_info = tarjeta()
         col_info.addWidget(etiqueta("Datos de las funciones", "seccion"))
         self.informacion = QPlainTextEdit()
+        permitir_usar_valores(self.informacion, "dato")
         self.informacion.setProperty("clase", "mono")
         self.informacion.setReadOnly(True)
         self.informacion.setPlaceholderText(
@@ -179,7 +181,7 @@ class PanelGraficador(PanelModulo):
         curvas: list[tuple[int, str, sp.Expr]] = []
         for indice, texto_funcion in activos:
             try:
-                expresion = sim.analizar(texto_funcion)
+                expresion, = sim.sustituir_variables(sim.analizar(texto_funcion))
             except sim.ErrorSimbolico as e:
                 aviso(self, f"Función {indice + 1}: {e}", "No se entiende la función")
                 return

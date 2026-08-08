@@ -106,15 +106,52 @@ def analizar(expresion: str, funciones_extra: frozenset | None = None,
     2*x**2 - 4
     """
     limpio = _validar_texto(expresion, funciones_extra)
+    # Las variables del usuario entran como símbolos propios. Sin esto, la
+    # multiplicación implícita parte «volumen» en v·o·l·u·m·e·n y el resultado
+    # de un apartado deja de poder usarse en otro.
+    conocidas = {nombre: sp.Symbol(nombre) for nombre in _variables_definidas()}
+    conocidas.update(locales or {})
     try:
         resultado = parse_expr(limpio, transformations=TRANSFORMACIONES,
-                               local_dict=locales, evaluate=True)
+                               local_dict=conocidas or None, evaluate=True)
     except (SyntaxError, TypeError, ValueError, AttributeError, RecursionError) as e:
         raise ErrorSimbolico(f"No se entiende la expresión: {e}") from e
 
     if not isinstance(resultado, sp.Basic):
         raise ErrorSimbolico("La expresión no es matemática")
     return resultado
+
+
+def _variables_definidas() -> dict[str, float]:
+    """Variables que el usuario ha definido, si el módulo está disponible."""
+    from .variables import valores
+
+    return valores()
+
+
+def sustituir_variables(*expresiones: sp.Expr) -> tuple[sp.Expr, ...]:
+    """Cambia las variables del usuario por su valor en estas expresiones.
+
+    Es lo que permite escribir ``x^2 = volumen`` después de haber guardado el
+    volumen desde Geometría.
+
+    Si sustituirlo todo dejara la expresión **sin ninguna incógnita**, no se
+    sustituye nada: significa que el nombre en cuestión es lo que se busca
+    (alguien definió ``x`` y ahora quiere resolver en ``x``), y convertirlo en
+    número dejaría una ecuación sin sentido.
+    """
+    definidas = _variables_definidas()
+    if not definidas:
+        return expresiones
+
+    cambios = {sp.Symbol(nombre): sp.Float(valor) for nombre, valor in definidas.items()}
+    cambiadas = tuple(e.subs(cambios) for e in expresiones)
+
+    antes = set().union(*(e.free_symbols for e in expresiones)) if expresiones else set()
+    despues = set().union(*(e.free_symbols for e in cambiadas)) if cambiadas else set()
+    if antes and not despues:
+        return expresiones
+    return cambiadas
 
 
 def analizar_igualdad(texto_ecuacion: str, *, igualar_a_cero: bool = True) -> tuple[sp.Expr, sp.Expr]:
@@ -128,7 +165,7 @@ def analizar_igualdad(texto_ecuacion: str, *, igualar_a_cero: bool = True) -> tu
         derecha = "0" if igualar_a_cero else ""
     if not derecha.strip():
         derecha = "0"
-    return analizar(izquierda), analizar(derecha)
+    return sustituir_variables(analizar(izquierda), analizar(derecha))
 
 
 def incognitas(*expresiones: sp.Expr) -> list[sp.Symbol]:

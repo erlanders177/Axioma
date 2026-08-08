@@ -4,6 +4,42 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ---
 
+## 3.5.0
+
+Lo que sale en un apartado se usa en los demás, y el sitio se reparte a mano.
+
+### Llevar un resultado de un apartado a otro
+
+Doble clic en cualquier fila de resultados y ese valor se guarda como
+**variable compartida**: a partir de ahí vale en los campos de cualquier
+apartado, en la calculadora, en la barra y **dentro de una ecuación**.
+
+Calcule el volumen de un cilindro en Geometría, guárdelo como `volumen`, y
+escriba `x^2 = volumen` en Ecuaciones. Se resuelve.
+
+- En las salidas de texto (ecuaciones, matrices, pasos, gráficas) se selecciona
+  el número y se usa el menú del botón derecho.
+- Se guarda el **valor exacto**, no el que se ve: el resultado mostrado va
+  redondeado a los decimales configurados, y arrastrar ese redondeo a los
+  cálculos siguientes es justo lo que se quiere evitar.
+
+### Repartir el sitio arrastrando
+
+Los separadores entre bloques eran de un píxel: había que acertar con el cursor
+para mover uno. Ahora son anchos y se iluminan al pasar por encima. Se agarra el
+borde entre dos apartados y se arrastra a izquierda o derecha para dar sitio a
+uno quitándoselo al otro.
+
+### Corregido
+
+- Una variable de varias letras se partía en factores: `volumen` era
+  `v·o·l·u·m·e·n` para el motor simbólico, así que un resultado guardado no
+  servía de nada dentro de una ecuación o una función.
+- Al sustituir variables se protege la incógnita: quien define `x` y luego
+  resuelve `x^2 = 4` no se queda sin ecuación.
+
+---
+
 ## 3.4.0
 
 Una sola pantalla. Se acabó cambiar de página.

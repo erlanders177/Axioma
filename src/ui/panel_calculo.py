@@ -20,6 +20,7 @@ from .comunes import (
     TablaResultados, aviso, boton, etiqueta, formatear_pasos,
     separador, tarjeta,
 )
+from .usar_resultado import permitir_usar_valores
 from .grafica import CICLO, PanelGrafica, cortar_saltos, muestrear
 
 EJEMPLOS = {
@@ -114,6 +115,7 @@ class PanelCalculo(PanelModulo):
         col_pasos = QVBoxLayout(contenedor_pasos)
         col_pasos.setContentsMargins(0, 8, 0, 0)
         self.pasos = QPlainTextEdit()
+        permitir_usar_valores(self.pasos, "resultado")
         self.pasos.setProperty("clase", "mono")
         self.pasos.setReadOnly(True)
         self.pasos.setPlaceholderText(
@@ -292,7 +294,7 @@ class PanelCalculo(PanelModulo):
             return
 
         try:
-            expresion = sim.analizar(expresion_texto)
+            expresion, = sim.sustituir_variables(sim.analizar(expresion_texto))
             variable = sim.variable_principal(expresion, variable_texto)
             if clave == "derivada":
                 lista = pasos_core.pasos_derivada(expresion, variable)
@@ -319,7 +321,7 @@ class PanelCalculo(PanelModulo):
 
     def _dibujar(self, clave: str, expresion_texto: str, variable_texto: str) -> None:
         try:
-            expresion = sim.analizar(expresion_texto)
+            expresion, = sim.sustituir_variables(sim.analizar(expresion_texto))
             variable = sim.variable_principal(expresion, variable_texto)
         except sim.ErrorSimbolico:
             self.grafica.lienzo.limpiar("Sin gráfica")
