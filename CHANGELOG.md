@@ -4,6 +4,51 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ---
 
+## 3.4.0
+
+Una sola pantalla. Se acabó cambiar de página.
+
+### Los apartados se enganchan, no se turnan
+
+La calculadora ocupa el centro y no se cierra nunca. Los demás apartados se
+enganchan a su alrededor pulsando su nombre en el lateral, **los que se quieran
+a la vez**, y se colocan arrastrándolos por su título: a un lado, encima,
+debajo, apilados en pestañas o sueltos fuera de la ventana.
+
+Ése era el problema de fondo: para resolver un problema de trigonometría hace
+falta ver la figura, la ecuación y la calculadora **al mismo tiempo**. Con un
+menú que cambia de página sólo se ve una cosa, y la anterior desaparece.
+
+- Volver a pulsar en el lateral cierra el apartado; <kbd>Ctrl</kbd>+<kbd>W</kbd>
+  cierra el que se esté usando y «Cerrar apartados» los quita todos.
+- Cerrar un apartado **no borra lo que había escrito**: al reabrirlo sigue ahí.
+- La disposición se guarda: la aplicación vuelve a abrirse tal como se dejó.
+- «A la vez» limita cuántos puede haber abiertos (2, 3, 4 o sin tope). Al
+  pasarse se cierra el más antiguo. De partida no hay tope.
+
+### Cada apartado, con su propio historial
+
+Vuelve a haber un historial por apartado, ahora que se ven varios a la vez: el
+de una figura geométrica no pinta nada mezclado con el de la calculadora. Va
+plegado, y el botón «Historial» de cada bloque lo despliega; mientras está
+plegado, el número que lleva al lado avisa de lo que se ha ido guardando.
+
+### Los paneles se adaptan al hueco
+
+Un panel que no cabe a lo ancho **apila sus columnas** en vez de recortarse, y
+el teclado de la calculadora se estrecha con la ventana en lugar de exigir su
+ancho. Si al abrir un apartado ya no queda sitio para otra columna, se coloca
+debajo del anterior antes que estrujar la calculadora.
+
+### Corregido
+
+- Al cambiar de figura o de método, las etiquetas del formulario anterior se
+  seguían dibujando encima: `takeAt` las quita del layout, pero `deleteLater`
+  no actúa hasta volver al bucle de eventos.
+- El botón «Borrar variables» estaba duplicado en la calculadora y en la barra.
+
+---
+
 ## 3.3.0
 
 Unificación: los módulos dejan de ser islas.

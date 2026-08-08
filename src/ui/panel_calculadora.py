@@ -5,7 +5,7 @@ from __future__ import annotations
 from PyQt5.QtCore import QEvent, Qt
 from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWidgets import (
-    QComboBox, QGridLayout, QHBoxLayout, QLineEdit, QShortcut, QSplitter,
+    QComboBox, QGridLayout, QHBoxLayout, QLineEdit, QShortcut, QSizePolicy,
     QVBoxLayout, QWidget,
 )
 
@@ -81,13 +81,7 @@ class PanelCalculadora(PanelModulo):
         raiz = QHBoxLayout(self)
         raiz.setContentsMargins(0, 0, 0, 0)
 
-        division = QSplitter(Qt.Horizontal)
-        division.addWidget(self._crear_columna_calculadora())
-
-
-        division.setStretchFactor(0, 3)
-        division.setSizes([620])
-        raiz.addWidget(division)
+        raiz.addWidget(self._crear_columna_calculadora())
 
     def _crear_columna_calculadora(self) -> QWidget:
         contenedor = QWidget()
@@ -140,7 +134,8 @@ class PanelCalculadora(PanelModulo):
         self.combo_angulo.setCurrentIndex(modos.index(actual) if actual in modos else 0)
         self.combo_angulo.currentIndexChanged.connect(self._cambiar_angulo)
         self.combo_angulo.setToolTip("Unidad de ángulo para las funciones trigonométricas")
-        self.combo_angulo.setFixedWidth(150)
+        self.combo_angulo.setMinimumWidth(96)
+        self.combo_angulo.setMaximumWidth(150)
         fila.addWidget(self.combo_angulo)
 
         fila.addWidget(boton("MC", "", self._memoria_limpiar, tooltip="Borrar la memoria"))
@@ -168,6 +163,10 @@ class PanelCalculadora(PanelModulo):
                 titulo, clase, orden = especificacion[0], especificacion[1], especificacion[2]
                 widget = boton(titulo, clase)
                 widget.setMinimumHeight(46)
+                # Ignored: las teclas se reparten el ancho que haya en lugar de
+                # exigir el de su texto. Con la calculadora compartiendo
+                # pantalla con otros apartados, ese ancho puede ser poco.
+                widget.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
                 widget.setFocusPolicy(Qt.NoFocus)
                 widget.clicked.connect(lambda _, o=orden: self._pulsar(o))
 

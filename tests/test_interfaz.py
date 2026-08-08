@@ -85,12 +85,72 @@ def test_los_encabezados_de_grupo_no_son_seleccionables(ventana):
         assert not (ventana.navegacion.item(fila).flags() & Qt.ItemIsSelectable)
 
 
-def test_ir_a_modulo_traduce_bien_los_indices(ventana):
+def test_ir_a_modulo_engancha_el_apartado_que_toca(ventana):
     from src.ui.ventana_principal import MODULOS
 
     for indice, (clave, _, titulo, _, _) in enumerate(MODULOS):
         ventana.ir_a_modulo(indice)
-        assert ventana.titulo_modulo.text().endswith(titulo), clave
+        assert ventana._activo.clave == clave
+        if clave != "calculadora":      # la calculadora no es un bloque: es el centro
+            assert clave in ventana._bloques, clave
+            assert ventana._bloques[clave].windowTitle().endswith(titulo)
+
+
+def test_abrir_y_cerrar_un_apartado(ventana):
+    ventana.cerrar_todos()
+    assert ventana._bloques == {}
+
+    ventana.alternar("geometria")
+    assert "geometria" in ventana._bloques
+    panel = ventana._paneles["geometria"]
+
+    ventana.alternar("geometria")
+    assert "geometria" not in ventana._bloques
+    # El panel no se destruye al cerrarlo: al volver a abrirlo sigue lo escrito.
+    ventana.alternar("geometria")
+    assert ventana._paneles["geometria"] is panel
+
+
+def test_varios_apartados_a_la_vez(ventana):
+    """Lo que motiva todo esto: ver la figura y su ecuación al mismo tiempo."""
+    ventana.cerrar_todos()
+    ventana.abrir("geometria")
+    ventana.abrir("ecuaciones")
+
+    assert {"geometria", "ecuaciones"} <= set(ventana._bloques)
+    # isVisibleTo y no isVisible: en las pruebas la ventana nunca llega a
+    # mostrarse, así que todo hijo suyo está oculto de facto.
+    assert all(b.isVisibleTo(ventana) for b in ventana._bloques.values())
+
+
+def test_el_tope_cierra_el_mas_antiguo(ventana):
+    from src.core.config import config
+
+    ventana.cerrar_todos()
+    previo = config["max_paneles"]
+    config["max_paneles"] = 2
+    try:
+        ventana.abrir("geometria")
+        ventana.abrir("ecuaciones")
+        ventana.abrir("matrices")
+        assert set(ventana._bloques) == {"ecuaciones", "matrices"}
+    finally:
+        config["max_paneles"] = previo
+        ventana.cerrar_todos()
+
+
+def test_cada_apartado_guarda_en_su_propio_historial(ventana):
+    """Una cuenta hecha con Geometría abierta no va al historial de la calculadora."""
+    ventana.cerrar_todos()
+    ventana.abrir("geometria")
+    apartado = ventana._apartados["geometria"]
+    antes_calculadora = ventana.apartado_calculadora.historial.lista.count()
+
+    ventana.barra.entrada.setText("2+2")
+    ventana.barra.calcular()
+
+    assert apartado.historial.lista.count() >= 1
+    assert ventana.apartado_calculadora.historial.lista.count() == antes_calculadora
 
 
 def test_cambio_de_tema_no_rompe_ningun_panel(ventana):

@@ -63,7 +63,7 @@
 <main>
 
 <h1>Axioma</h1>
-<p class="lema">Calculadora científica multifunción · Manual de usuario · versión 3.3</p>
+<p class="lema">Calculadora científica multifunción · Manual de usuario · versión 3.4</p>
 
 <div class="indice">
   <strong>Contenido</strong>
@@ -93,10 +93,31 @@
 <!-- ==================================================================== -->
 <h2 id="general">1. Cómo se usa la aplicación</h2>
 <p>
-  Los dieciséis módulos viven en una sola ventana, agrupados por temas en el menú
-  lateral. El menú de la izquierda cambia de módulo; a la derecha hay un
-  historial, que va mostrando el del módulo en el que está, y abajo una
-  <a href="#barra">barra de cálculo</a> disponible en todos ellos.
+  Axioma es <strong>una sola pantalla</strong>. La calculadora ocupa el centro y
+  no se cierra nunca; los demás apartados se enganchan a su alrededor: pulse su
+  nombre en el menú de la izquierda y aparece, pulse otra vez y se va. Puede
+  tener <strong>los que quiera abiertos a la vez</strong>.
+</p>
+<p>
+  Cada apartado es un bloque que se coloca <strong>arrastrándolo por su
+  título</strong>: a un lado, encima, debajo, apilado con otro en pestañas o
+  suelto fuera de la ventana. Los bordes se arrastran para repartir el sitio.
+</p>
+<p>
+  Ésa es la idea: para resolver un problema de trigonometría hace falta ver la
+  figura, la ecuación y la calculadora <em>al mismo tiempo</em>, no una detrás de
+  otra.
+</p>
+<ul>
+  <li>Cerrar un apartado <b>no borra lo que había escrito</b>: al reabrirlo sigue ahí.</li>
+  <li>La disposición se guarda; la aplicación vuelve a abrirse tal como se dejó.</li>
+  <li><b>«A la vez»</b>, abajo del menú, limita cuántos apartados puede haber
+      abiertos. Al pasarse se cierra el más antiguo. De partida no hay tope.</li>
+  <li>Cada apartado lleva <b>su propio historial</b>, plegado; el botón
+      «Historial» de cada bloque lo despliega.</li>
+</ul>
+<p>
+  Debajo de la calculadora está la <a href="#barra">barra de cálculo</a>.
 </p>
 
 <h3>Cómo escribir las expresiones</h3>
@@ -122,6 +143,8 @@
   <tr><td><kbd>Esc</kbd></td><td>Limpiar la pantalla de la calculadora</td></tr>
   <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Recorrer las operaciones anteriores</td></tr>
   <tr><td><kbd>Ctrl</kbd>+<kbd>Espacio</kbd></td><td>Ir a la barra de cálculo</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>9</kbd></td><td>Abrir uno de los nueve primeros apartados</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>W</kbd></td><td>Cerrar el apartado en uso</td></tr>
 </table>
 
 <h3 id="barra">La barra de cálculo</h3>
@@ -133,7 +156,7 @@
 </p>
 <ul>
   <li>Admite lo mismo que la calculadora, incluidas <b>unidades</b>: <code>3 km + 200 m</code>.</li>
-  <li>Lo que calcula <b>va al historial del módulo en el que está</b>, no a un cajón común: si trabaja en una figura geométrica, esa cuenta pertenece a ese problema.</li>
+  <li>Lo que calcula <b>va al historial del apartado en el que está</b>, no a un cajón común: si trabaja en una figura geométrica, esa cuenta pertenece a ese problema.</li>
   <li>Las <b>variables se comparten</b>. Escriba <code>h = 5*sin(30)</code> y podrá usar <code>h</code> en los campos del módulo, en la calculadora o dentro de una ecuación.</li>
   <li><kbd>↑</kbd> y <kbd>↓</kbd> recorren lo ya calculado.</li>
 </ul>
@@ -649,10 +672,14 @@
 <!-- ==================================================================== -->
 <h2 id="historial">18. El historial</h2>
 <p>
-  El panel de la derecha muestra el historial del módulo en el que está, y cambia
-  al cambiar de módulo. Cada módulo conserva el suyo por separado: lo que calcule
-  trabajando en una figura geométrica no se mezcla con las cuentas de la
-  calculadora, aunque lo haya escrito en la barra de abajo.
+  Cada apartado lleva su propio historial, plegado de partida: el botón
+  <b>«Historial»</b> de cada bloque lo despliega. Mientras está plegado, el
+  número que aparece al lado avisa de cuántas operaciones se han guardado.
+</p>
+<p>
+  Los historiales no se mezclan: lo que calcule trabajando en una figura
+  geométrica se queda en el apartado de Geometría, aunque lo haya escrito en la
+  barra de cálculo.
 </p>
 <p>Opciones:</p>
 <ul>
@@ -683,7 +710,7 @@
 
 <footer>
   <p>
-    <strong>Axioma 3.3</strong> · calculadora científica multifunción<br>
+    <strong>Axioma 3.4</strong> · calculadora científica multifunción<br>
     Desarrollador: Aarón Aranda Torrijos (@erlanders177) —
     <a href="mailto:aaron.aranda.t@gmail.com">aaron.aranda.t@gmail.com</a><br>
     Proyecto: <a href="https://github.com/erlanders177/Axioma">github.com/erlanders177/Axioma</a><br>

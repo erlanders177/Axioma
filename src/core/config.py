@@ -19,6 +19,8 @@ PREDETERMINADOS: dict[str, Any] = {
     "max_historial": 500,        # entradas guardadas por módulo
     "modulo_inicial": "calculadora",
     "ventana": {},               # geometría de la ventana principal
+    "disposicion": {},           # apartados abiertos y dónde estaba cada uno
+    "max_paneles": 0,            # apartados a la vez; 0 = sin tope
 }
 
 

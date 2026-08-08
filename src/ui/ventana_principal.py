@@ -1,9 +1,13 @@
-"""Ventana principal: navegación lateral con todos los módulos.
+"""Ventana principal: una sola pantalla con apartados encajables.
 
-En la versión anterior cada módulo abría su propia ventana suelta y la ventana
-principal las guardaba en un diccionario que se inicializaba **después** de
-conectar los botones. Aquí hay una sola ventana con un panel por módulo, creado
-de forma diferida la primera vez que se abre (así el arranque es inmediato).
+La calculadora ocupa el centro y no se cierra; los demás apartados se enganchan
+a su alrededor desde el lateral, los que se quieran a la vez, y se colocan
+arrastrándolos: al lado, encima, debajo, apilados en pestañas o sueltos fuera de
+la ventana. No se cambia de página, porque trabajar con una figura geométrica y
+la ecuación que la describe exige verlas juntas, no una detrás de otra.
+
+Los paneles se construyen la primera vez que se abren, así el arranque es
+inmediato, y no se destruyen al cerrarlos: lo escrito sigue ahí al volver.
 """
 
 from __future__ import annotations
@@ -11,12 +15,12 @@ from __future__ import annotations
 import webbrowser
 from typing import Callable
 
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import QByteArray, QSize, Qt
 from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWidgets import (
-    QAbstractItemView, QApplication, QHBoxLayout, QListWidget,
-    QListWidgetItem, QMainWindow, QMessageBox, QShortcut, QSplitter,
-    QStackedWidget, QStatusBar, QVBoxLayout, QWidget,
+    QAbstractItemView, QApplication, QComboBox, QDockWidget, QHBoxLayout,
+    QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QShortcut,
+    QStatusBar, QVBoxLayout, QWidget,
 )
 
 from .. import __autor__, __contacto__, __nombre__, __url__, __version__
@@ -25,8 +29,9 @@ from ..core import historial as hist
 from ..core.config import config
 from ..core.rutas import dir_datos, recurso
 from . import tema
+from .apartado import Apartado
 from .barra_calculo import BarraCalculo
-from .comunes import PanelHistorial, boton, etiqueta, tarjeta
+from .comunes import boton, etiqueta
 from .panel_ajuste import PanelAjuste
 from .panel_bases import PanelBases
 from .panel_calculadora import PanelCalculadora
@@ -69,6 +74,12 @@ MODULOS: list[tuple[str, str, str, str, type]] = [
     ("combinatoria", "n!", "Combinatoria", "Factorial, C(n,r), P(n,r)", PanelCombinatoria),
 ]
 
+#: Anchos de referencia al repartir la pantalla entre los bloques abiertos.
+LATERAL = 216              # el menú de la izquierda, que es fijo
+CENTRO_MINIMO = 620        # lo que necesita el teclado de la calculadora
+ANCHO_MINIMO_BLOQUE = 330  # por debajo de esto un apartado no se puede usar
+ANCHO_COMODO_BLOQUE = 560  # si sobra sitio, tampoco hace falta más
+
 #: Encabezados de la navegación: (índice donde empieza, título del grupo).
 #: Con dieciséis módulos una lista plana se lee mal y no cabe sin desplazar.
 GRUPOS_NAVEGACION: list[tuple[int, str]] = [
@@ -79,80 +90,80 @@ GRUPOS_NAVEGACION: list[tuple[int, str]] = [
 ]
 
 
+
+
 class VentanaPrincipal(QMainWindow):
+    """Una sola pantalla: la calculadora, y los apartados que se enganchen.
+
+    No hay páginas. La calculadora ocupa el centro y no se cierra nunca; los
+    demás apartados son bloques que se abren desde el lateral y se colocan donde
+    el usuario quiera —al lado, encima, debajo, apilados en pestañas o sueltos
+    fuera de la ventana—, tantos a la vez como quepan. La disposición se guarda,
+    así que la aplicación vuelve a abrirse tal y como se dejó.
+    """
+
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle(f"{__nombre__} {__version__}")
         self.setMinimumSize(1100, 700)
         self._paneles: dict[str, QWidget] = {}
+        self._apartados: dict[str, Apartado] = {}
+        self._bloques: dict[str, QDockWidget] = {}
+        self._orden: list[str] = []          # orden de apertura, para el tope
         self._constructores: dict[str, Callable[[], QWidget]] = {}
         self.paleta = tema.paleta(config["tema"])
+
+        # La rejilla libre: los bloques se pueden anidar en filas y columnas en
+        # vez de limitarse a las cuatro bandas del borde.
+        self.setDockNestingEnabled(True)
+        self.setDockOptions(
+            QMainWindow.AnimatedDocks | QMainWindow.AllowNestedDocks
+            | QMainWindow.AllowTabbedDocks
+        )
 
         self._construir()
         self._aplicar_tema()
         self._restaurar_geometria()
         self._atajos()
+        self._restaurar_disposicion()
 
-        inicial = config["modulo_inicial"]
-        claves = [m[0] for m in MODULOS]
-        self.ir_a_modulo(claves.index(inicial) if inicial in claves else 0)
+        app = QApplication.instance()
+        if app is not None:
+            app.focusChanged.connect(self._seguir_el_foco)
 
     # ------------------------------------------------------------------ UI -- #
 
     def _construir(self) -> None:
+        for clave, _, _, _, clase in MODULOS:
+            self._constructores[clave] = clase
+
         central = QWidget()
         self.setCentralWidget(central)
         raiz = QHBoxLayout(central)
         raiz.setContentsMargins(0, 0, 0, 0)
         raiz.setSpacing(0)
-
         raiz.addWidget(self._crear_lateral())
 
         contenedor = QWidget()
         columna = QVBoxLayout(contenedor)
         columna.setContentsMargins(18, 14, 18, 14)
         columna.setSpacing(12)
-        columna.addLayout(self._crear_encabezado())
 
-        # El módulo activo y el historial comparten fila: el historial es único
-        # para toda la aplicación y va mostrando el del apartado en el que está.
-        self.division = QSplitter(Qt.Horizontal)
-        self.pila = QStackedWidget()
-        self.division.addWidget(self.pila)
+        # La calculadora está siempre: es el sitio desde el que se trabaja.
+        self.apartado_calculadora = self._crear_apartado("calculadora")
+        columna.addWidget(self.apartado_calculadora, 1)
 
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial(MODULOS[0][0], "Historial")
-        self.historial.restaurar.connect(self._restaurar_en_el_panel_activo)
-        col_hist.addWidget(self.historial)
-        self.division.addWidget(marco_hist)
-
-        self.division.setStretchFactor(0, 1)
-        self.division.setStretchFactor(1, 0)
-        self.division.setCollapsible(0, False)
-        self.division.setSizes([900, 320])
-        columna.addWidget(self.division, 1)
-
-        # La barra de cálculo está siempre disponible, sea cual sea el módulo.
+        # La barra de cálculo sirve a todos los apartados abiertos.
         self.barra = BarraCalculo()
         self.barra.calculado.connect(self._guardar_calculo_de_la_barra)
         self.barra.variables_cambiadas.connect(self._avisar_de_las_variables)
         columna.addWidget(self.barra)
 
         raiz.addWidget(contenedor, 1)
+        self._activo = self.apartado_calculadora
 
         self.setStatusBar(QStatusBar())
-        self.statusBar().showMessage(
-            f"{unidades.resumen()}  ·  {figuras.resumen()}"
-        )
-
-        # Marcador de posición para cada módulo; el panel real se crea al abrirlo.
-        for clave, _, _, _, clase in MODULOS:
-            self._constructores[clave] = clase
-            hueco = QWidget()
-            QVBoxLayout(hueco).addWidget(
-                etiqueta("Cargando…", "subtitulo"), alignment=Qt.AlignCenter
-            )
-            self.pila.addWidget(hueco)
+        self.statusBar().showMessage(f"{unidades.resumen()}  ·  {figuras.resumen()}")
 
     def _crear_lateral(self) -> QWidget:
         lateral = QWidget()
@@ -173,9 +184,13 @@ class VentanaPrincipal(QMainWindow):
 
         self.navegacion = QListWidget()
         self.navegacion.setProperty("clase", "navegacion")
-        self.navegacion.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.navegacion.setSelectionMode(QAbstractItemView.NoSelection)
         self.navegacion.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.navegacion.setIconSize(QSize(1, 1))
+        self.navegacion.setToolTip(
+            "Pulse para enganchar un apartado a la pantalla; vuelva a pulsar "
+            "para quitarlo.\nLuego se arrastran por su título para colocarlos."
+        )
 
         # Los encabezados de grupo son elementos no seleccionables intercalados,
         # así que la fila de la lista deja de coincidir con el índice del módulo.
@@ -199,13 +214,33 @@ class VentanaPrincipal(QMainWindow):
             self._modulo_de_fila[self.navegacion.count()] = indice
             self.navegacion.addItem(elemento)
 
-        self.navegacion.currentRowChanged.connect(self._fila_seleccionada)
+        self.navegacion.itemClicked.connect(self._pulsar_en_el_menu)
         columna.addWidget(self.navegacion, 1)
 
         pie = QWidget()
         pie_col = QVBoxLayout(pie)
         pie_col.setContentsMargins(10, 8, 10, 12)
         pie_col.setSpacing(4)
+
+        fila_tope = QHBoxLayout()
+        fila_tope.setSpacing(6)
+        fila_tope.addWidget(etiqueta("A la vez:", "subtitulo"))
+        self.combo_tope = QComboBox()
+        self.combo_tope.setToolTip(
+            "Cuántos apartados puede haber enganchados a la vez, sin contar la "
+            "calculadora.\nAl pasarse se cierra el más antiguo, para que nada "
+            "quede aplastado."
+        )
+        for texto, valor in (("sin tope", 0), ("2", 2), ("3", 3), ("4", 4)):
+            self.combo_tope.addItem(texto, valor)
+        tope = int(config["max_paneles"] or 0)
+        self.combo_tope.setCurrentIndex(max(0, self.combo_tope.findData(tope)))
+        self.combo_tope.currentIndexChanged.connect(self._cambiar_tope)
+        fila_tope.addWidget(self.combo_tope, 1)
+        pie_col.addLayout(fila_tope)
+
+        pie_col.addWidget(boton("Cerrar apartados", "", self.cerrar_todos,
+                                tooltip="Dejar sólo la calculadora"))
         self.btn_tema = boton("", "", self._alternar_tema,
                               tooltip="Cambiar entre tema claro y oscuro (Ctrl+T)")
         pie_col.addWidget(self.btn_tema)
@@ -218,99 +253,218 @@ class VentanaPrincipal(QMainWindow):
         lateral.setObjectName("lateral")
         return lateral
 
-    def _crear_encabezado(self) -> QHBoxLayout:
-        fila = QHBoxLayout()
-        fila.setSpacing(10)
-        columna = QVBoxLayout()
-        columna.setSpacing(1)
-        self.titulo_modulo = etiqueta("", "titulo")
-        self.subtitulo_modulo = etiqueta("", "subtitulo")
-        columna.addWidget(self.titulo_modulo)
-        columna.addWidget(self.subtitulo_modulo)
-        fila.addLayout(columna)
-        fila.addStretch()
-        return fila
-
     def _atajos(self) -> None:
         QShortcut(QKeySequence("Ctrl+T"), self, self._alternar_tema)
         QShortcut(QKeySequence("F1"), self, self._abrir_manual)
         QShortcut(QKeySequence("Ctrl+Space"), self, self.barra.enfocar)
+        QShortcut(QKeySequence("Ctrl+W"), self, self._cerrar_el_activo)
         QShortcut(QKeySequence("Ctrl+Q"), self, self.close)
-        # Sólo hay teclas del 1 al 9; el resto de módulos se abren con el ratón.
+        # Sólo hay teclas del 1 al 9; el resto de apartados se abren con el ratón.
         for indice in range(min(9, len(MODULOS))):
             QShortcut(
                 QKeySequence(f"Ctrl+{indice + 1}"), self,
                 lambda i=indice: self.ir_a_modulo(i),
             )
 
-    # -------------------------------------------------------------- lógica -- #
+    # ------------------------------------------------------ abrir y cerrar -- #
 
-    def _fila_seleccionada(self, fila: int) -> None:
-        """Traduce la fila de la lista (que incluye encabezados) al módulo."""
-        indice = self._modulo_de_fila.get(fila)
-        if indice is not None:
-            self._cambiar_modulo(indice)
-
-    def ir_a_modulo(self, indice: int) -> None:
-        """Selecciona un módulo por su posición en ``MODULOS``."""
-        fila = self._fila_de_modulo.get(indice)
-        if fila is not None:
-            self.navegacion.setCurrentRow(fila)
-
-    def _cambiar_modulo(self, indice: int) -> None:
-        if not 0 <= indice < len(MODULOS):
-            return
-        clave, icono, titulo_mod, descripcion, _ = MODULOS[indice]
-
-        if clave not in self._paneles:
-            QApplication.setOverrideCursor(Qt.WaitCursor)
-            try:
-                panel = self._constructores[clave]()
-            except Exception as e:  # el módulo no debe tumbar la aplicación
-                QApplication.restoreOverrideCursor()
-                QMessageBox.critical(
-                    self, "Error al abrir el módulo",
-                    f"No se pudo cargar «{titulo_mod}»:\n\n{type(e).__name__}: {e}",
-                )
-                return
+    def _crear_apartado(self, clave: str) -> Apartado:
+        """Construye el panel del módulo (una sola vez) y lo envuelve."""
+        titulo = next(m[2] for m in MODULOS if m[0] == clave)
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            panel = self._constructores[clave]()
+        except Exception as e:  # un módulo roto no debe tumbar la aplicación
+            QApplication.restoreOverrideCursor()
+            QMessageBox.critical(
+                self, "Error al abrir el apartado",
+                f"No se pudo cargar «{titulo}»:\n\n{type(e).__name__}: {e}",
+            )
+            raise
+        finally:
             QApplication.restoreOverrideCursor()
 
-            antiguo = self.pila.widget(indice)
-            self.pila.removeWidget(antiguo)
-            antiguo.deleteLater()
-            self.pila.insertWidget(indice, panel)
-            self._paneles[clave] = panel
-            # Lo que guarde el panel aparece al momento en el historial común.
-            panel.guardado.connect(self.historial.anadir)
-            if hasattr(panel, "aplicar_paleta"):
-                panel.aplicar_paleta(self.paleta)
+        apartado = Apartado(panel, clave)
+        apartado.restaurar.connect(panel.restaurar_datos)
+        if hasattr(panel, "aplicar_paleta"):
+            panel.aplicar_paleta(self.paleta)
+        self._paneles[clave] = panel
+        self._apartados[clave] = apartado
+        return apartado
 
-        self.pila.setCurrentIndex(indice)
-        self.titulo_modulo.setText(f"{icono}  {titulo_mod}")
-        self.subtitulo_modulo.setText(descripcion)
-        config["modulo_inicial"] = clave
+    def abrir(self, clave: str, *, area=Qt.RightDockWidgetArea) -> None:
+        """Engancha un apartado a la pantalla, o lo trae al frente si ya está."""
+        if clave == "calculadora":
+            self.apartado_calculadora.panel.setFocus()
+            self._activo = self.apartado_calculadora
+            return
 
-        panel = self._paneles[clave]
-        self.historial.cambiar_modulo(
-            panel.MODULO or clave,
-            getattr(panel, "TITULO_HISTORIAL", "Historial"),
+        bloque = self._bloques.get(clave)
+        if bloque is not None:
+            bloque.show()
+            bloque.raise_()
+            self._activo = self._apartados[clave]
+            self._anotar_uso(clave)
+            self._marcar_menu()
+            return
+
+        try:
+            apartado = self._apartados.get(clave) or self._crear_apartado(clave)
+        except Exception:
+            return
+
+        icono, titulo = next((m[1], m[2]) for m in MODULOS if m[0] == clave)
+        bloque = QDockWidget(f"{icono}   {titulo}", self)
+        bloque.setObjectName(f"bloque_{clave}")   # lo necesita saveState()
+        bloque.setWidget(apartado)
+        bloque.setAllowedAreas(Qt.AllDockWidgetAreas)
+        bloque.setFeatures(
+            QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetFloatable
+            | QDockWidget.DockWidgetClosable
         )
+        bloque.visibilityChanged.connect(lambda _=False: self._marcar_menu())
+        self._bloques[clave] = bloque
 
-    def _restaurar_en_el_panel_activo(self, datos: dict) -> None:
-        """Reenvía la entrada del historial al panel que está a la vista."""
-        panel = self.pila.currentWidget()
-        if hasattr(panel, "restaurar_datos"):
-            panel.restaurar_datos(datos)
+        # Un bloque nuevo se apoya en el último abierto en vez de partir la
+        # pantalla otra vez. Si ya no queda ancho para otra columna se coloca
+        # debajo: es preferible a estrujar la calculadora hasta que el teclado
+        # deje de verse. El usuario puede recolocarlo arrastrándolo.
+        self.addDockWidget(area, bloque)
+        anteriores = [c for c in self._orden if c in self._bloques and c != clave]
+        if anteriores:
+            vecino = self._bloques[anteriores[-1]]
+            if not vecino.isFloating():
+                self.splitDockWidget(vecino, bloque, self._orientacion_para_el_nuevo())
+
+        bloque.show()   # addDockWidget no lo muestra si la ventana aún no lo está
+        self._activo = apartado
+        self._anotar_uso(clave)
+        self._repartir_el_ancho()
+        self._marcar_menu()
+
+    def _orientacion_para_el_nuevo(self) -> int:
+        """¿El bloque nuevo cabe en otra columna, o va debajo del anterior?"""
+        columnas = len({b.x() for b in self._bloques.values() if not b.isFloating()})
+        sitio = self.width() - LATERAL - CENTRO_MINIMO
+        return Qt.Horizontal if sitio >= ANCHO_MINIMO_BLOQUE * (columnas + 1) else Qt.Vertical
+
+    def _repartir_el_ancho(self) -> None:
+        """Da a cada bloque un ancho de trabajo sin ahogar a la calculadora.
+
+        Sin esto, Qt reparte según lo que pida cada panel, y los paneles piden
+        mucho: dos bloques abiertos dejaban el teclado de la calculadora con
+        media tecla asomando.
+        """
+        laterales = [b for b in self._bloques.values() if not b.isFloating()]
+        if not laterales:
+            return
+        # Los bloques apilados en la misma columna comparten ancho, así que lo
+        # que cuenta para el reparto son las columnas, no los bloques.
+        columnas = max(1, len({b.x() for b in laterales}))
+        disponible = max(0, self.width() - LATERAL - CENTRO_MINIMO)
+        ancho = max(ANCHO_MINIMO_BLOQUE, min(ANCHO_COMODO_BLOQUE, disponible // columnas))
+        self.resizeDocks(laterales, [ancho] * len(laterales), Qt.Horizontal)
+
+    def cerrar(self, clave: str) -> None:
+        """Quita un apartado de la pantalla. El panel se conserva en memoria."""
+        bloque = self._bloques.pop(clave, None)
+        if bloque is None:
+            return
+        if clave in self._orden:
+            self._orden.remove(clave)
+        bloque.setWidget(None)
+        apartado = self._apartados.get(clave)
+        if apartado is not None:
+            apartado.setParent(None)
+        self.removeDockWidget(bloque)
+        bloque.deleteLater()
+        if self._activo is apartado:
+            self._activo = self.apartado_calculadora
+        self._marcar_menu()
+
+    def alternar(self, clave: str) -> None:
+        """Abre el apartado si está cerrado, y lo cierra si está abierto."""
+        if clave in self._bloques:
+            self.cerrar(clave)
+        else:
+            self.abrir(clave)
+
+    def cerrar_todos(self) -> None:
+        for clave in list(self._bloques):
+            self.cerrar(clave)
+
+    def _cerrar_el_activo(self) -> None:
+        clave = getattr(self._activo, "clave", "")
+        if clave and clave != "calculadora":
+            self.cerrar(clave)
+
+    def _anotar_uso(self, clave: str) -> None:
+        """Registra el orden de apertura y aplica el tope si lo hay."""
+        if clave in self._orden:
+            self._orden.remove(clave)
+        self._orden.append(clave)
+
+        tope = int(config["max_paneles"] or 0)
+        if tope > 0:
+            # Se cierra el más antiguo, que es el que lleva más tiempo sin usarse.
+            while len(self._orden) > tope:
+                self.cerrar(self._orden[0])
+
+    def _cambiar_tope(self) -> None:
+        config["max_paneles"] = self.combo_tope.currentData()
+        if self._orden:
+            self._anotar_uso(self._orden[-1])
+
+    # ------------------------------------------------------------- lateral -- #
+
+    def _pulsar_en_el_menu(self, elemento: QListWidgetItem) -> None:
+        indice = self._modulo_de_fila.get(self.navegacion.row(elemento))
+        if indice is not None:
+            self.alternar(MODULOS[indice][0])
+
+    def _marcar_menu(self) -> None:
+        """Marca en el lateral qué apartados están enganchados ahora mismo."""
+        for indice, (clave, icono, titulo_mod, _, _) in enumerate(MODULOS):
+            fila = self._fila_de_modulo.get(indice)
+            elemento = self.navegacion.item(fila) if fila is not None else None
+            if elemento is None:
+                continue
+            abierto = clave == "calculadora" or clave in self._bloques
+            elemento.setText(f"{'●' if abierto else '　'} {icono.ljust(2)}  {titulo_mod}")
+            fuente = elemento.font()
+            fuente.setBold(abierto)
+            elemento.setFont(fuente)
+
+    def ir_a_modulo(self, indice: int) -> None:
+        """Abre el apartado que ocupa esa posición en ``MODULOS`` y lo enfoca."""
+        if 0 <= indice < len(MODULOS):
+            self.abrir(MODULOS[indice][0])
+
+    # -------------------------------------------------------- foco y barra -- #
+
+    def _seguir_el_foco(self, _viejo, nuevo) -> None:
+        """El apartado activo es aquel donde está el cursor del usuario."""
+        widget = nuevo
+        while widget is not None:
+            if isinstance(widget, Apartado):
+                self._activo = widget
+                return
+            widget = widget.parentWidget()
+
+    @property
+    def historial(self):
+        """Historial del apartado activo (el de la calculadora por defecto)."""
+        return self._activo.historial
 
     def _guardar_calculo_de_la_barra(self, operacion: str, datos: dict) -> None:
-        """Lo calculado en la barra pertenece al módulo en el que se está."""
-        panel = self.pila.currentWidget()
-        modulo = getattr(panel, "MODULO", "") or self.historial.modulo
+        """Lo calculado en la barra pertenece al apartado en el que se está."""
+        apartado = self._activo
+        modulo = getattr(apartado.panel, "MODULO", "") or apartado.clave
         try:
             entrada = hist.guardar(modulo, operacion, datos)
         except hist.ErrorHistorial:
             return
-        self.historial.anadir(entrada)
+        apartado.historial.anadir(entrada)
 
     def _avisar_de_las_variables(self) -> None:
         """Permite a los paneles reaccionar si dependen de las variables."""
@@ -318,6 +472,27 @@ class VentanaPrincipal(QMainWindow):
             if hasattr(panel, "variables_actualizadas"):
                 panel.variables_actualizadas()
 
+    # -------------------------------------------------------- disposición -- #
+
+    def _restaurar_disposicion(self) -> None:
+        """Vuelve a dejar la pantalla como estaba al cerrar."""
+        guardada = config["disposicion"] or {}
+        for clave in guardada.get("abiertos", []):
+            if clave in self._constructores and clave != "calculadora":
+                self.abrir(clave)
+        estado = guardada.get("estado")
+        if estado:
+            try:
+                self.restoreState(QByteArray.fromBase64(estado.encode("ascii")))
+            except (ValueError, UnicodeEncodeError):
+                pass       # una disposición ilegible no debe impedir arrancar
+        self._marcar_menu()
+
+    def _guardar_disposicion(self) -> None:
+        config["disposicion"] = {
+            "abiertos": list(self._orden),
+            "estado": bytes(self.saveState().toBase64()).decode("ascii"),
+        }
     def _alternar_tema(self) -> None:
         nuevo = "claro" if self.paleta.nombre == "oscuro" else "oscuro"
         config["tema"] = nuevo
@@ -370,7 +545,8 @@ class VentanaPrincipal(QMainWindow):
             <p><b>Contenido:</b><br>
                {unidades.resumen()}<br>
                {figuras.resumen()}</p>
-            <p><b>Atajos:</b> Ctrl+1…9 cambia de módulo ·
+            <p><b>Atajos:</b> Ctrl+1…9 abre un apartado · Ctrl+W cierra el
+               activo · Ctrl+Espacio va a la barra de cálculo ·
                Ctrl+T cambia el tema · F1 abre el manual</p>
             <p><b>Datos del usuario:</b><br>
                <code>{dir_datos()}</code></p>
@@ -404,5 +580,6 @@ class VentanaPrincipal(QMainWindow):
             "y": self.y(),
             "maximizada": self.isMaximized(),
         }
+        self._guardar_disposicion()
         config.guardar()
         super().closeEvent(evento)

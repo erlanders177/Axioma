@@ -5,14 +5,15 @@
 # Axioma
 
 **Calculadora científica multifunción de escritorio.**
-Dieciséis módulos en una sola ventana, en español, sin conexión a internet.
+Dieciséis apartados en una sola pantalla, abiertos a la vez, en español y
+sin conexión a internet.
 
 [![tests](https://github.com/erlanders177/Axioma/actions/workflows/tests.yml/badge.svg)](https://github.com/erlanders177/Axioma/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![PyQt5](https://img.shields.io/badge/GUI-PyQt5-41CD52?logo=qt&logoColor=white)](https://pypi.org/project/PyQt5/)
 [![Licencia](https://img.shields.io/badge/licencia-PolyForm%20Noncommercial-blue)](LICENSE)
 
-<img src="docs/capturas/graficador.png" alt="Módulo de gráficas de Axioma" width="90%">
+<img src="docs/capturas/pantalla.png" alt="Axioma con la calculadora, Geometría y Ecuaciones abiertos a la vez" width="90%">
 
 </div>
 
@@ -56,20 +57,30 @@ Dieciséis módulos en una sola ventana, en español, sin conexión a internet.
 | **Geometría** | **61 figuras**: 36 planas y 25 cuerpos, con vista previa 2D/3D y las fórmulas aplicadas. Incluye **cálculo inverso**: «el área vale 50, ¿cuánto mide el lado?». |
 | **Combinatoria** | Factorial, combinaciones, permutaciones, variaciones, doble factorial, subfactorial, números de Catalan, función gamma y aproximación de Stirling. |
 
-### Todo conectado
+### Una sola pantalla
 
-**Una barra de cálculo en todos los módulos.** Si está resolviendo una ecuación
-trigonométrica y necesita saber cuánto vale `5*sin(30)`, lo escribe sin salir de
-ahí. Lo que calcula **va al historial de ese módulo**, no a un cajón común, y las
+**No se cambia de página.** La calculadora ocupa el centro y no se cierra; los
+demás apartados se enganchan a su alrededor pulsando su nombre en el lateral,
+los que se quieran a la vez. Se colocan arrastrándolos por su título: a un lado,
+encima, debajo, apilados en pestañas o sueltos fuera de la ventana. Para resolver
+un problema de trigonometría hay que ver la figura, la ecuación y la calculadora
+al mismo tiempo, no una detrás de otra.
+
+Cerrar un apartado no borra lo escrito, y la disposición se guarda: la
+aplicación vuelve a abrirse tal como se dejó.
+
+**Una barra de cálculo bajo la calculadora.** Si necesita saber cuánto vale
+`5*sin(30)` sin abandonar lo que está haciendo, lo escribe ahí. Lo que calcula
+**va al historial del apartado en el que está**, no a un cajón común, y las
 **variables se comparten**: defina `h = 5*sin(30)` y podrá usar `h` en los campos
-de cualquier módulo.
+de cualquier apartado.
 
 **Los campos aceptan más que números.** Escriba `sqrt(16)`, una variable, o una
 unidad. En Geometría se pueden **mezclar**: radio `5 cm` y altura `50 mm` dan
 **392,699 cm³**, no «392,699 u³».
 
-Cada módulo conserva su historial separado, con búsqueda, restauración con doble
-clic y exportación a CSV o TXT.
+Cada apartado lleva su propio historial, plegado hasta que se pide, con
+búsqueda, restauración con doble clic y exportación a CSV o TXT.
 
 ### Paso a paso
 
@@ -181,10 +192,11 @@ Temas claro y oscuro, intercambiables con <kbd>Ctrl</kbd>+<kbd>T</kbd>.
 
 | Atajo | Acción |
 |-------|--------|
-| <kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>9</kbd> | Ir a uno de los nueve primeros módulos |
+| <kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>9</kbd> | Abrir uno de los nueve primeros apartados |
+| <kbd>Ctrl</kbd>+<kbd>W</kbd> | Cerrar el apartado en uso |
 | <kbd>Ctrl</kbd>+<kbd>T</kbd> | Cambiar de tema |
 | <kbd>F1</kbd> | Abrir el manual |
-| <kbd>Intro</kbd> | Calcular en el módulo activo |
+| <kbd>Intro</kbd> | Calcular en el apartado activo |
 | <kbd>Esc</kbd> | Limpiar la calculadora |
 | <kbd>Ctrl</kbd>+<kbd>Espacio</kbd> | Ir a la barra de cálculo |
 
@@ -232,7 +244,8 @@ Axioma/
 │   └── ui/                     interfaz (PyQt5)
 │       ├── ventana_principal.py
 │       ├── panel_*.py          un panel por módulo
-│       ├── barra_calculo.py    barra de cálculo de todos los módulos
+│       ├── apartado.py        un módulo con su historial, encajable
+│       ├── barra_calculo.py    barra de cálculo bajo la calculadora
 │       ├── grafica.py          lienzo de matplotlib compartido
 │       ├── visualizador.py     dibujo 2D/3D de figuras
 │       ├── comunes.py          widgets compartidos
@@ -257,7 +270,7 @@ pip install pytest
 python -m pytest tests/ -q
 ```
 
-491 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
+495 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
 unidades, las 61 figuras contra resultados conocidos, entradas maliciosas
 bloqueadas en el evaluador, resultados de libro comprobados (la serie de Fourier
 de x, la precisión relativa de Euler frente a Runge-Kutta) y los dieciséis
