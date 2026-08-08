@@ -4,6 +4,65 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ---
 
+## 3.3.0
+
+Unificación: los módulos dejan de ser islas.
+
+### Barra de cálculo en todos los módulos
+
+Ya no hace falta salir del módulo en el que se trabaja para hacer una cuenta
+suelta. Si está resolviendo una ecuación trigonométrica y necesita saber cuánto
+vale `5*sin(30)`, lo escribe en la barra inferior sin moverse.
+
+Dos decisiones deliberadas:
+
+- **Lo que se calcula ahí va al historial del módulo activo**, no al de la
+  calculadora. Si trabaja en una figura geométrica, esa cuenta pertenece a ese
+  problema, no a un cajón común.
+- **Las variables son compartidas.** Al escribir `h = 5*sin(30)` puede usar `h`
+  en los campos del módulo, en la calculadora o en una ecuación.
+
+La barra admite lo mismo que la calculadora, incluidas unidades
+(`3 km + 200 m`), y las flechas ↑ ↓ recorren lo ya calculado.
+
+### Un solo historial
+
+Cada uno de los dieciséis paneles llevaba su propio historial, de unos 350 px de
+ancho: el mismo espacio y el mismo código repetidos dieciséis veces. Ahora hay
+**uno solo**, en la ventana, que va mostrando el del módulo activo. Cada módulo
+conserva su historial separado; lo que desaparece es la duplicación.
+
+Eso libera cerca de un 28 % del ancho de la ventana en todos los módulos, que es
+lo que deja sitio a la barra de cálculo.
+
+### Unidades en los campos
+
+Los campos numéricos aceptan ahora **unidades, variables y expresiones**:
+
+| Escriba | Y funciona |
+|---------|------------|
+| `5 cm` y `50 mm` en la misma figura | se unifican solas |
+| `sqrt(16)` | vale 4 |
+| `radio` | usa la variable definida en la barra |
+
+En Geometría, los resultados salen en la unidad que haya usado: un cilindro de
+radio `5 cm` y altura `50 mm` da **392.699 cm³**, no «392.699 u³».
+
+### Notas
+
+Las variables guardan números sin unidad. Por eso `alto = 50 mm` se rechaza con
+un aviso: si se admitiera, usar `alto` en un campo en centímetros valdría 50 cm
+sin avisar, y un resultado erróneo en silencio es peor que una restricción.
+
+### Corregido
+
+- La unidad de referencia de una figura se elegía recorriendo un conjunto, cuyo
+  orden en Python no está garantizado: el mismo cilindro podía dar el resultado
+  en cm³ o en mm³ según la ejecución. Ahora se toma el primer campo en el orden
+  en que aparecen.
+
+---
+
 ## 3.2.0
 
 Cuatro módulos nuevos: Axioma pasa de doce a **dieciséis**. Cubren lo que se

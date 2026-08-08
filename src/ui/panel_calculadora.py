@@ -11,10 +11,11 @@ from PyQt5.QtWidgets import (
 
 from ..core import historial as hist
 from ..core import magnitudes
+from ..core import variables as vars_compartidas
 from ..core.config import config
 from ..core.evaluador import ErrorExpresion, evaluar, parentesis_pendientes
 from ..core.formato import formatear
-from .comunes import PanelHistorial, aviso, boton, etiqueta, tarjeta
+from .comunes import PanelModulo, aviso, boton, etiqueta, tarjeta
 
 #: Cada tecla es (etiqueta, clase, inserción, etiqueta alterna, inserción alterna).
 #: Las inserciones que empiezan por ``#`` son órdenes, no texto.
@@ -54,15 +55,18 @@ _TECLAS: list[list[tuple]] = [
 ]
 
 
-class PanelCalculadora(QWidget):
+class PanelCalculadora(PanelModulo):
+    MODULO = "calculadora"
+    TITULO_HISTORIAL = "Historial de operaciones"
+
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(padre)
         self.memoria = 0.0
         self.ultimo_resultado = 0.0
         self.segunda_activa = False
         self._teclas_alternas: list[tuple] = []
-        #: Variables que define el usuario con «nombre = expresión».
-        self.variables: dict[str, float] = {}
+        #: Las variables son compartidas con la barra de cálculo y con el resto
+        #: de módulos, así que viven en `core.variables`, no aquí.
         #: Expresiones ya calculadas, para recorrerlas con las flechas ↑/↓.
         self._expresiones: list[str] = []
         self._posicion_historial = 0
@@ -80,15 +84,9 @@ class PanelCalculadora(QWidget):
         division = QSplitter(Qt.Horizontal)
         division.addWidget(self._crear_columna_calculadora())
 
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial("calculadora", "Historial de operaciones")
-        self.historial.restaurar.connect(self._restaurar)
-        col_hist.addWidget(self.historial)
-        division.addWidget(marco_hist)
 
         division.setStretchFactor(0, 3)
-        division.setStretchFactor(1, 2)
-        division.setSizes([620, 400])
+        division.setSizes([620])
         raiz.addWidget(division)
 
     def _crear_columna_calculadora(self) -> QWidget:
@@ -155,8 +153,8 @@ class PanelCalculadora(QWidget):
         self.etiqueta_memoria = etiqueta("M = 0", "subtitulo")
         fila.addWidget(self.etiqueta_memoria)
         fila.addStretch()
-        fila.addWidget(boton("Borrar variables", "", self._borrar_variables,
-                             tooltip="Olvidar las variables definidas con «nombre = valor»"))
+        # El botón de borrar variables está en la barra de cálculo, que se ve
+        # desde aquí: tenerlo dos veces sólo ocupa sitio.
         fila.addWidget(boton("Copiar", "", self._copiar,
                              tooltip="Copiar el contenido de la pantalla"))
         return fila
@@ -325,9 +323,14 @@ class PanelCalculadora(QWidget):
     def _modo(self) -> str:
         return config["modo_angulo"]
 
+    @property
+    def variables(self) -> dict:
+        """Vista de las variables compartidas (la usan las pruebas)."""
+        return vars_compartidas.valores()
+
     def _variables(self) -> dict:
         entorno = {"ans": self.ultimo_resultado, "mem": self.memoria}
-        entorno.update(self.variables)
+        entorno.update(vars_compartidas.valores())
         return entorno
 
     @staticmethod
@@ -412,15 +415,11 @@ class PanelCalculadora(QWidget):
         self._borrador = ""
 
         operacion = f"{expresion} = {texto_resultado}"
-        try:
-            entrada = hist.guardar("calculadora", operacion, {
-                "expresion": expresion,
-                "resultado": texto_resultado,
-                "modo_angulo": self._modo,
-            })
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial as e:
-            aviso(self, str(e), "Historial")
+        self.guardar_en_historial(operacion, {
+            "expresion": expresion,
+            "resultado": texto_resultado,
+            "modo_angulo": self._modo,
+        })
 
     def _calcular_con_unidades(self, expresion: str) -> None:
         try:
@@ -440,31 +439,25 @@ class PanelCalculadora(QWidget):
         self._posicion_historial = len(self._expresiones)
         self._borrador = ""
 
-        try:
-            entrada = hist.guardar("calculadora", f"{expresion} = {texto_resultado}", {
-                "expresion": expresion,
-                "resultado": texto_resultado,
-                "modo_angulo": self._modo,
-            })
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial as e:
-            aviso(self, str(e), "Historial")
+        self.guardar_en_historial(f"{expresion} = {texto_resultado}", {
+            "expresion": expresion,
+            "resultado": texto_resultado,
+            "modo_angulo": self._modo,
+        })
 
     def _asignar(self, nombre: str, cuerpo: str) -> None:
         """Guarda una variable del usuario: ``r = 5`` y luego ``pi*r^2``."""
-        from ..core.evaluador import CONSTANTES, FUNCIONES
-
-        if nombre in CONSTANTES or nombre in FUNCIONES or nombre in ("ans", "mem"):
-            aviso(self, f"«{nombre}» es un nombre reservado: elija otro.", "Variable")
-            return
-
         try:
             valor = evaluar(cuerpo, self._modo, self._variables())
         except ErrorExpresion as e:
             aviso(self, str(e), "No se pudo calcular")
             return
 
-        self.variables[nombre] = valor
+        try:
+            vars_compartidas.definir(nombre, valor)
+        except vars_compartidas.ErrorVariable as e:
+            aviso(self, str(e), "Variable")
+            return
         self.ultimo_resultado = valor
         texto_valor = formatear(valor, config["decimales"])
         self.vista_previa.setText(f"{nombre} = {texto_valor}   (guardada)")
@@ -472,29 +465,24 @@ class PanelCalculadora(QWidget):
         self._refrescar_variables()
 
         operacion = f"{nombre} = {cuerpo} = {texto_valor}"
-        try:
-            entrada = hist.guardar("calculadora", operacion, {
-                "expresion": f"{nombre} = {cuerpo}",
-                "resultado": texto_valor,
-                "modo_angulo": self._modo,
-            })
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial:
-            pass
+        self.guardar_en_historial(operacion, {
+            "expresion": f"{nombre} = {cuerpo}",
+            "resultado": texto_valor,
+            "modo_angulo": self._modo,
+        })
 
     def _refrescar_variables(self) -> None:
-        if not self.variables:
-            self.etiqueta_variables.setText("")
-            self.etiqueta_variables.setVisible(False)
-            return
-        resumen = "   ".join(
-            f"{nombre} = {formatear(valor, 6)}" for nombre, valor in self.variables.items()
-        )
-        self.etiqueta_variables.setText("Variables:   " + resumen)
-        self.etiqueta_variables.setVisible(True)
+        resumen = vars_compartidas.resumen(config["decimales"])
+        self.etiqueta_variables.setText(f"Variables:   {resumen}" if resumen else "")
+        self.etiqueta_variables.setVisible(bool(resumen))
+
+    def variables_actualizadas(self) -> None:
+        """La barra de cálculo ha cambiado las variables: refrescar la vista."""
+        self._refrescar_variables()
 
     def _borrar_variables(self) -> None:
-        self.variables.clear()
+        """Olvida las variables. La acción vive en la barra; esto la comparte."""
+        vars_compartidas.borrar_todas()
         self._refrescar_variables()
         self.pantalla.setFocus()
 
@@ -526,7 +514,7 @@ class PanelCalculadora(QWidget):
         if portapapeles is not None:
             portapapeles.setText(self.pantalla.text())
 
-    def _restaurar(self, datos: dict) -> None:
+    def restaurar_datos(self, datos: dict) -> None:
         expresion = datos.get("expresion")
         if expresion:
             self.pantalla.setText(str(expresion))

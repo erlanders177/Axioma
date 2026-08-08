@@ -8,17 +8,20 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from ..core import historial as hist
 from ..core import unidades as uni
 from ..core.config import config
 from ..core.formato import formatear
 from .comunes import (
-    CampoNumerico, PanelHistorial, TablaResultados, aviso, boton, etiqueta,
+    PanelModulo,
+    CampoNumerico, TablaResultados, aviso, boton, etiqueta,
     separador, tarjeta,
 )
 
 
-class PanelConversiones(QWidget):
+class PanelConversiones(PanelModulo):
+    MODULO = "conversiones"
+    TITULO_HISTORIAL = "Historial de conversiones"
+
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(padre)
         self._cargando = False
@@ -34,15 +37,9 @@ class PanelConversiones(QWidget):
         division = QSplitter(Qt.Horizontal)
         division.addWidget(self._crear_columna_conversion())
 
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial("conversiones", "Historial de conversiones")
-        self.historial.restaurar.connect(self._restaurar)
-        col_hist.addWidget(self.historial)
-        division.addWidget(marco_hist)
 
         division.setStretchFactor(0, 3)
-        division.setStretchFactor(1, 2)
-        division.setSizes([680, 380])
+        division.setSizes([680])
         raiz.addWidget(division)
 
     def _crear_columna_conversion(self) -> QWidget:
@@ -254,17 +251,13 @@ class PanelConversiones(QWidget):
             f"{formatear(valor, decimales)} {origen} → "
             f"{formatear(resultado, decimales)} {destino}  ({nombre_categoria})"
         )
-        try:
-            entrada = hist.guardar("conversiones", operacion, {
-                "valor": valor,
-                "origen": origen,
-                "destino": destino,
-                "categoria": nombre_categoria,
-                "grupo": self.combo_grupo.currentText(),
-            })
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial as e:
-            aviso(self, str(e), "Historial")
+        self.guardar_en_historial(operacion, {
+            "valor": valor,
+            "origen": origen,
+            "destino": destino,
+            "categoria": nombre_categoria,
+            "grupo": self.combo_grupo.currentText(),
+        })
 
     # -------------------------------------------------------------- búsqueda -- #
 
@@ -308,7 +301,7 @@ class PanelConversiones(QWidget):
         if portapapeles is not None:
             portapapeles.setText(self.resultado.text())
 
-    def _restaurar(self, datos: dict) -> None:
+    def restaurar_datos(self, datos: dict) -> None:
         nombre_categoria = datos.get("categoria")
         if not nombre_categoria or nombre_categoria not in uni.CATEGORIAS:
             return

@@ -10,11 +10,11 @@ from PyQt5.QtWidgets import (
 )
 
 from ..core import estadistica as est
-from ..core import historial as hist
 from ..core.config import config
 from . import tema
 from .comunes import (
-    CampoNumerico, PanelHistorial, TablaResultados, aviso, boton, etiqueta,
+    PanelModulo,
+    CampoNumerico, TablaResultados, aviso, boton, etiqueta,
     separador, tarjeta,
 )
 from .grafica import CICLO, PanelGrafica
@@ -23,7 +23,10 @@ EJEMPLO_X = "12, 15, 17, 18, 20, 22, 23, 25, 28, 30"
 EJEMPLO_Y = "25, 31, 34, 38, 41, 45, 46, 51, 56, 61"
 
 
-class PanelEstadistica(QWidget):
+class PanelEstadistica(PanelModulo):
+    MODULO = "estadistica"
+    TITULO_HISTORIAL = "Historial"
+
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(padre)
         self.paleta = tema.paleta(config["tema"])
@@ -40,13 +43,8 @@ class PanelEstadistica(QWidget):
         division.addWidget(self._crear_columna_entrada())
         division.addWidget(self._crear_columna_salida())
 
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial("estadistica", "Historial")
-        self.historial.restaurar.connect(self._restaurar)
-        col_hist.addWidget(self.historial)
-        division.addWidget(marco_hist)
 
-        division.setSizes([360, 500, 280])
+        division.setSizes([360, 500])
         raiz.addWidget(division)
 
     def _crear_columna_entrada(self) -> QWidget:
@@ -315,6 +313,10 @@ class PanelEstadistica(QWidget):
             elemento = self.formulario.takeAt(0)
             widget = elemento.widget()
             if widget is not None:
+                # setParent(None) lo quita de la pantalla ya; deleteLater solo
+                # actúa al volver al bucle de eventos, y hasta entonces el widget
+                # se sigue dibujando encima del que ocupa ahora su sitio.
+                widget.setParent(None)
                 widget.deleteLater()
         self._campos_distribucion.clear()
 
@@ -407,11 +409,7 @@ class PanelEstadistica(QWidget):
             self.grafica.lienzo.limpiar("Pulse «Calcular» para ver el gráfico")
 
     def _guardar(self, operacion: str, datos: dict) -> None:
-        try:
-            entrada = hist.guardar("estadistica", operacion, datos)
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial:
-            pass
+        self.guardar_en_historial(operacion, datos)
 
     def _copiar(self) -> None:
         from PyQt5.QtWidgets import QApplication
@@ -419,7 +417,7 @@ class PanelEstadistica(QWidget):
         if portapapeles is not None:
             portapapeles.setText(self.tabla.texto_plano())
 
-    def _restaurar(self, datos: dict) -> None:
+    def restaurar_datos(self, datos: dict) -> None:
         modo = datos.get("modo")
         if modo == "datos" and datos.get("datos"):
             self.pestanas.setCurrentIndex(0)

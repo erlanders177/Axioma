@@ -243,11 +243,13 @@ def test_geometria_filtro_ignora_acentos(ventana):
 
 
 def test_geometria_guarda_en_el_historial(ventana):
+    from src.ui.ventana_principal import MODULOS
+    ventana.ir_a_modulo([m[0] for m in MODULOS].index("geometria"))
     geo = panel(ventana, "geometria")
     geo.combo_figura.setCurrentText("Cubo")
-    antes = geo.historial.lista.count()
+    antes = ventana.historial.lista.count()
     geo._calcular_y_guardar()
-    assert geo.historial.lista.count() == antes + 1
+    assert ventana.historial.lista.count() == antes + 1
 
 
 # --------------------------------------------------------------------------- #
@@ -623,8 +625,11 @@ def test_combinatoria_rechaza_datos_invalidos(ventana, operacion, valores):
 # --------------------------------------------------------------------------- #
 
 def test_historial_guarda_filtra_y_borra_por_identidad(ventana):
+    # El historial es único y muestra el del módulo activo, así que hay que
+    # situarse en la calculadora antes de mirar el suyo.
+    ventana.ir_a_modulo(0)
     calc = panel(ventana, "calculadora")
-    lista = calc.historial
+    lista = ventana.historial
     lista._limpiar_todo()
 
     calc.pantalla.setText("1+1")
@@ -649,11 +654,12 @@ def test_historial_guarda_filtra_y_borra_por_identidad(ventana):
 
 
 def test_historial_se_restaura_con_doble_clic(ventana):
+    ventana.ir_a_modulo(0)
     calc = panel(ventana, "calculadora")
     calc.pantalla.setText("3*7")
     calc.calcular()
     calc.pantalla.clear()
-    calc.historial._restaurar_elemento(calc.historial.lista.item(0))
+    ventana.historial._restaurar_elemento(ventana.historial.lista.item(0))
     assert calc.pantalla.text() == "3*7"
 
 
@@ -699,7 +705,7 @@ def test_flechas_recuperan_expresiones_anteriores(ventana):
     from PyQt5.QtGui import QKeyEvent
 
     calc = panel(ventana, "calculadora")
-    calc.historial._limpiar_todo()
+    ventana.historial._limpiar_todo()
     calc._expresiones.clear()
     calc._posicion_historial = 0
 
@@ -1046,3 +1052,146 @@ def test_la_aplicacion_tiene_icono():
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))
+
+
+# --------------------------------------------------------------------------- #
+# Historial compartido y barra de cálculo
+# --------------------------------------------------------------------------- #
+
+def _ir_a(ventana, clave):
+    from src.ui.ventana_principal import MODULOS
+    ventana.ir_a_modulo([m[0] for m in MODULOS].index(clave))
+    return panel(ventana, clave)
+
+
+def test_hay_un_solo_historial(ventana):
+    """Ya no lo lleva cada panel: es único y vive en la ventana."""
+    assert hasattr(ventana, "historial")
+    for clave, pan in ventana._paneles.items():
+        assert not hasattr(pan, "historial"), f"{clave} conserva su propio historial"
+
+
+def test_el_historial_sigue_al_modulo_activo(ventana):
+    from src.ui.ventana_principal import MODULOS
+
+    for indice, (clave, _, _, _, _) in enumerate(MODULOS):
+        ventana.ir_a_modulo(indice)
+        assert ventana.historial.modulo == clave
+
+
+def test_cada_modulo_declara_su_clave_de_historial(ventana):
+    from src.core import historial as hist
+
+    for clave, pan in ventana._paneles.items():
+        assert pan.MODULO == clave
+        assert pan.MODULO in hist.MODULOS
+
+
+def test_la_barra_calcula(ventana):
+    _ir_a(ventana, "ecuaciones")
+    ventana.barra.entrada.setText("5*sin(30)")
+    ventana.barra.calcular()
+    assert "2.5" in ventana.barra.resultado.text()
+
+
+def test_lo_calculado_en_la_barra_va_al_modulo_activo(ventana):
+    """Es el punto del diseño: la cuenta pertenece al problema en el que estás."""
+    from src.core import historial as hist
+
+    _ir_a(ventana, "geometria")
+    ventana.historial._limpiar_todo()
+    ventana.barra.entrada.setText("40320+1")
+    ventana.barra.calcular()
+
+    assert any("40320+1" in e["operacion"] for e in hist.cargar("geometria"))
+    assert not any("40320+1" in e["operacion"] for e in hist.cargar("calculadora"))
+
+
+def test_las_variables_de_la_barra_valen_en_los_campos(ventana):
+    from src.core import variables
+
+    variables.borrar_todas()
+    _ir_a(ventana, "geometria")
+    ventana.barra.entrada.setText("lado = 2*3")
+    ventana.barra.calcular()
+    assert variables.valores()["lado"] == 6
+
+    geo = panel(ventana, "geometria")
+    geo.buscador.clear()
+    geo.combo_figura.setCurrentText("Cuadrado")
+    geo._campos["l"].setText("lado")
+    geo.calcular(silencioso=True)
+    filas = {geo.tabla.item(f, 0).text(): geo.tabla.item(f, 1).text()
+             for f in range(geo.tabla.rowCount())}
+    assert filas["Área"] == "36 u²"
+    variables.borrar_todas()
+
+
+def test_la_barra_rechaza_nombres_reservados(ventana):
+    from src.core import variables
+
+    ventana.barra.entrada.setText("pi = 3")
+    ventana.barra.calcular()
+    assert "pi" not in variables.valores()
+
+
+def test_la_barra_opera_con_unidades(ventana):
+    ventana.barra.entrada.setText("3 km + 200 m")
+    ventana.barra.calcular()
+    assert "3.2 km" in ventana.barra.resultado.text()
+
+
+# --------------------------------------------------------------------------- #
+# Unidades en los campos de geometría
+# --------------------------------------------------------------------------- #
+
+def _area_y_volumen(geo):
+    return {geo.tabla.item(f, 0).text(): geo.tabla.item(f, 1).text()
+            for f in range(geo.tabla.rowCount())}
+
+
+def test_geometria_mezcla_unidades(ventana):
+    """5 cm de radio y 50 mm de altura son la misma longitud."""
+    geo = _ir_a(ventana, "geometria")
+    geo.buscador.clear()
+    geo.combo_figura.setCurrentText("Cilindro")
+    geo._campos["r"].setText("5 cm")
+    geo._campos["h"].setText("50 mm")
+    geo.calcular(silencioso=True)
+    assert _area_y_volumen(geo)["Volumen"] == "392.699 cm³"
+
+
+def test_geometria_sin_unidades_sigue_igual(ventana):
+    geo = _ir_a(ventana, "geometria")
+    geo.combo_figura.setCurrentText("Cilindro")
+    geo._campos["r"].setText("3")
+    geo._campos["h"].setText("5")
+    geo.calcular(silencioso=True)
+    assert _area_y_volumen(geo)["Volumen"] == "141.372 u³"
+
+
+def test_geometria_acepta_expresiones(ventana):
+    geo = _ir_a(ventana, "geometria")
+    geo.combo_figura.setCurrentText("Cuadrado")
+    geo._campos["l"].setText("sqrt(16)")
+    geo.calcular(silencioso=True)
+    assert _area_y_volumen(geo)["Área"] == "16 u²"
+
+
+def test_geometria_avisa_de_unidad_incompatible(ventana):
+    geo = _ir_a(ventana, "geometria")
+    geo.combo_figura.setCurrentText("Cuadrado")
+    geo._campos["l"].setText("5 kg")
+    geo.calcular(silencioso=True)
+    assert _DIALOGOS
+
+
+def test_la_barra_no_guarda_variables_con_unidad(ventana):
+    """«alto = 50 mm» valdría 50 cm en un campo en centímetros: se rechaza."""
+    from src.core import variables
+
+    variables.borrar_todas()
+    ventana.barra.entrada.setText("alto = 50 mm")
+    ventana.barra.calcular()
+    assert "alto" not in variables.valores()
+    assert "unidad" in ventana.barra.resultado.text().lower()

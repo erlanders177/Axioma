@@ -10,18 +10,19 @@ from PyQt5.QtWidgets import (
     QTableWidgetItem, QTabWidget, QVBoxLayout, QWidget,
 )
 
-from ..core import historial as hist
 from ..core import numerico
 from ..core import simbolico as sim
 from ..core.config import config
 from ..core.formato import formatear
 from . import tema
-from .comunes import aviso, boton, etiqueta, separador, tarjeta
-from .comunes import PanelHistorial
+from .comunes import PanelModulo, aviso, boton, etiqueta, separador, tarjeta
 from .grafica import CICLO, PanelGrafica, cortar_saltos, muestrear
 
 
-class PanelNumerico(QWidget):
+class PanelNumerico(PanelModulo):
+    MODULO = "numerico"
+    TITULO_HISTORIAL = "Historial"
+
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(padre)
         self.paleta = tema.paleta(config["tema"])
@@ -39,13 +40,8 @@ class PanelNumerico(QWidget):
         division.addWidget(self._crear_columna_entrada())
         division.addWidget(self._crear_columna_salida())
 
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial("numerico", "Historial")
-        self.historial.restaurar.connect(self._restaurar)
-        col_hist.addWidget(self.historial)
-        division.addWidget(marco_hist)
 
-        division.setSizes([360, 520, 270])
+        division.setSizes([360, 520])
         raiz.addWidget(division)
 
     def _crear_columna_entrada(self) -> QWidget:
@@ -166,6 +162,10 @@ class PanelNumerico(QWidget):
             elemento = self.formulario.takeAt(0)
             widget = elemento.widget()
             if widget is not None:
+                # setParent(None) lo quita de la pantalla ya; deleteLater solo
+                # actúa al volver al bucle de eventos, y hasta entonces el widget
+                # se sigue dibujando encima del que ocupa ahora su sitio.
+                widget.setParent(None)
                 widget.deleteLater()
         self._campos.clear()
 
@@ -460,11 +460,7 @@ class PanelNumerico(QWidget):
         datos = {"metodo": self._clave}
         datos.update({k: self._texto(k) for k in self._campos})
         datos.update(extra or {})
-        try:
-            entrada = hist.guardar("numerico", operacion, datos)
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial:
-            pass
+        self.guardar_en_historial(operacion, datos)
 
     def _cargar_ejemplo(self) -> None:
         clave = self._clave
@@ -488,7 +484,7 @@ class PanelNumerico(QWidget):
             lineas.append("\t".join(celdas))
         portapapeles.setText("\n".join(lineas))
 
-    def _restaurar(self, datos: dict) -> None:
+    def restaurar_datos(self, datos: dict) -> None:
         claves = [c for c, _, _ in self._catalogo()]
         metodo = datos.get("metodo")
         if metodo in claves:

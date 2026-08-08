@@ -11,13 +11,13 @@ from PyQt5.QtWidgets import (
 )
 
 from ..core import calculo
-from ..core import historial as hist
 from ..core import pasos as pasos_core
 from ..core import simbolico as sim
 from ..core.config import config
 from . import tema
 from .comunes import (
-    PanelHistorial, TablaResultados, aviso, boton, etiqueta, formatear_pasos,
+    PanelModulo,
+    TablaResultados, aviso, boton, etiqueta, formatear_pasos,
     separador, tarjeta,
 )
 from .grafica import CICLO, PanelGrafica, cortar_saltos, muestrear
@@ -33,7 +33,10 @@ EJEMPLOS = {
 }
 
 
-class PanelCalculo(QWidget):
+class PanelCalculo(PanelModulo):
+    MODULO = "calculo"
+    TITULO_HISTORIAL = "Historial"
+
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(padre)
         self.paleta = tema.paleta(config["tema"])
@@ -51,13 +54,8 @@ class PanelCalculo(QWidget):
         division.addWidget(self._crear_columna_datos())
         division.addWidget(self._crear_columna_resultados())
 
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial("calculo", "Historial")
-        self.historial.restaurar.connect(self._restaurar)
-        col_hist.addWidget(self.historial)
-        division.addWidget(marco_hist)
 
-        division.setSizes([340, 500, 300])
+        division.setSizes([340, 500])
         raiz.addWidget(division)
 
     def _crear_columna_datos(self) -> QWidget:
@@ -154,6 +152,10 @@ class PanelCalculo(QWidget):
             elemento = self.formulario.takeAt(0)
             widget = elemento.widget()
             if widget is not None:
+                # setParent(None) lo quita de la pantalla ya; deleteLater solo
+                # actúa al volver al bucle de eventos, y hasta entonces el widget
+                # se sigue dibujando encima del que ocupa ahora su sitio.
+                widget.setParent(None)
                 widget.deleteLater()
         self._campos.clear()
 
@@ -243,19 +245,15 @@ class PanelCalculo(QWidget):
 
         titulo = calculo.OPERACIONES[self.combo.currentIndex()][1]
         resumen = next((v for k, v in filas if k not in ("Función", "Punto", "Intervalo")), "")
-        try:
-            entrada = hist.guardar("calculo", f"{titulo}: {expresion_texto}  →  {resumen}", {
-                "operacion": clave,
-                "expresion": expresion_texto,
-                "variable": variable_texto,
-                "orden": self._texto("orden"),
-                "desde": self._texto("desde"),
-                "hasta": self._texto("hasta"),
-                "punto": self._texto("punto"),
-            })
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial:
-            pass
+        self.guardar_en_historial(f"{titulo}: {expresion_texto}  →  {resumen}", {
+            "operacion": clave,
+            "expresion": expresion_texto,
+            "variable": variable_texto,
+            "orden": self._texto("orden"),
+            "desde": self._texto("desde"),
+            "hasta": self._texto("hasta"),
+            "punto": self._texto("punto"),
+        })
 
     def _ejecutar(self, clave: str, expresion: str, variable: str) -> list[tuple[str, str]]:
         if clave == "derivada":
@@ -437,7 +435,7 @@ class PanelCalculo(QWidget):
         else:
             portapapeles.setText(self.tabla.texto_plano())
 
-    def _restaurar(self, datos: dict) -> None:
+    def restaurar_datos(self, datos: dict) -> None:
         claves = [c for c, _, _ in calculo.OPERACIONES]
         clave = datos.get("operacion")
         if clave in claves:

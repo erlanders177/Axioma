@@ -20,13 +20,13 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from ..core import historial as hist
 from ..core import pasos as pasos_core
 from ..core import simbolico as sim
 from ..core.config import config
 from . import tema
 from .comunes import (
-    PanelHistorial, aviso, boton, etiqueta, formatear_pasos, separador, tarjeta,
+    PanelModulo,
+    aviso, boton, etiqueta, formatear_pasos, separador, tarjeta,
 )
 from .grafica import CICLO, PanelGrafica, cortar_saltos, muestrear
 
@@ -51,7 +51,10 @@ class ErrorEcuacion(sim.ErrorSimbolico):
     """La ecuación no se pudo interpretar o resolver."""
 
 
-class PanelEcuaciones(QWidget):
+class PanelEcuaciones(PanelModulo):
+    MODULO = "ecuaciones"
+    TITULO_HISTORIAL = "Historial de ecuaciones"
+
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(padre)
         self.paleta = tema.paleta(config["tema"])
@@ -66,15 +69,9 @@ class PanelEcuaciones(QWidget):
         division = QSplitter(Qt.Horizontal)
         division.addWidget(self._crear_columna())
 
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial("ecuaciones", "Historial de ecuaciones")
-        self.historial.restaurar.connect(self._restaurar)
-        col_hist.addWidget(self.historial)
-        division.addWidget(marco_hist)
 
         division.setStretchFactor(0, 3)
-        division.setStretchFactor(1, 2)
-        division.setSizes([700, 360])
+        division.setSizes([700])
         raiz.addWidget(division)
 
     def _crear_columna(self) -> QWidget:
@@ -227,15 +224,11 @@ class PanelEcuaciones(QWidget):
         self._dibujar(expresion, variable, soluciones["reales"])
 
         if not silencioso:
-            try:
-                entrada = hist.guardar("ecuaciones", f"{texto}   →   {resumen}", {
-                    "ecuacion": texto,
-                    "variable": variable.name,
-                    "soluciones": [str(s) for s in soluciones["reales"]],
-                })
-                self.historial.anadir(entrada)
-            except hist.ErrorHistorial as e:
-                aviso(self, str(e), "Historial")
+            self.guardar_en_historial(f"{texto}   →   {resumen}", {
+                "ecuacion": texto,
+                "variable": variable.name,
+                "soluciones": [str(s) for s in soluciones["reales"]],
+            })
 
     def _resolver_inecuacion(self, texto: str, simbolo: str, silencioso: bool) -> None:
         """Resuelve una desigualdad y sombrea en la gráfica el conjunto solución."""
@@ -290,14 +283,10 @@ class PanelEcuaciones(QWidget):
         self._dibujar(expresion, variable, [], conjunto=conjunto, relacion=normalizado)
 
         if not silencioso:
-            try:
-                entrada = hist.guardar("ecuaciones", f"{texto}   →   {resumen}", {
-                    "ecuacion": texto,
-                    "variable": variable.name,
-                })
-                self.historial.anadir(entrada)
-            except hist.ErrorHistorial:
-                pass
+            self.guardar_en_historial(f"{texto}   →   {resumen}", {
+                "ecuacion": texto,
+                "variable": variable.name,
+            })
 
     @staticmethod
     def _buscar_soluciones(expresion: sp.Expr, variable: sp.Symbol) -> dict:
@@ -510,7 +499,7 @@ class PanelEcuaciones(QWidget):
         if self.entrada.text().strip():
             self.resolver(silencioso=True)
 
-    def _restaurar(self, datos: dict) -> None:
+    def restaurar_datos(self, datos: dict) -> None:
         ecuacion = datos.get("ecuacion")
         if ecuacion:
             self.entrada.setText(str(ecuacion))

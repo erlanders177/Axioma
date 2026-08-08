@@ -30,11 +30,11 @@ from sympy.parsing.sympy_parser import (
     standard_transformations,
 )
 
-from ..core import historial as hist
 from ..core import pasos as pasos_core
 from ..core.config import config
 from .comunes import (
-    PanelHistorial, aviso, boton, etiqueta, formatear_pasos, tarjeta,
+    PanelModulo,
+    aviso, boton, etiqueta, formatear_pasos, tarjeta,
 )
 
 TRANSFORMACIONES = standard_transformations + (
@@ -55,7 +55,10 @@ class ErrorSistema(ValueError):
     """El sistema no se pudo interpretar."""
 
 
-class PanelSistemas(QWidget):
+class PanelSistemas(PanelModulo):
+    MODULO = "sistemas"
+    TITULO_HISTORIAL = "Historial de sistemas"
+
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(padre)
         self.campos: list[QLineEdit] = []
@@ -71,15 +74,9 @@ class PanelSistemas(QWidget):
         division = QSplitter(Qt.Horizontal)
         division.addWidget(self._crear_columna())
 
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial("sistemas", "Historial de sistemas")
-        self.historial.restaurar.connect(self._restaurar)
-        col_hist.addWidget(self.historial)
-        division.addWidget(marco_hist)
 
         division.setStretchFactor(0, 3)
-        division.setStretchFactor(1, 2)
-        division.setSizes([680, 380])
+        division.setSizes([680])
         raiz.addWidget(division)
 
     def _crear_columna(self) -> QWidget:
@@ -234,16 +231,9 @@ class PanelSistemas(QWidget):
 
         self.salida.setPlainText(informe)
         if not silencioso:
-            try:
-                entrada = hist.guardar(
-                    "sistemas",
-                    f"Sistema {len(lineas)}×{len(incognitas)}  →  {resumen}",
-                    {"ecuaciones": lineas,
-                     "incognitas": [s.name for s in incognitas]},
-                )
-                self.historial.anadir(entrada)
-            except hist.ErrorHistorial as e:
-                aviso(self, str(e), "Historial")
+            self.guardar_en_historial(f"Sistema {len(lineas)}×{len(incognitas)}  →  {resumen}",
+                {"ecuaciones": lineas,
+                 "incognitas": [s.name for s in incognitas]},)
 
     def _resolver_sistema(self, lineas: list[str], ecuaciones: list[sp.Eq],
                           incognitas: list[sp.Symbol]) -> tuple[str, str]:
@@ -353,7 +343,7 @@ class PanelSistemas(QWidget):
         if portapapeles is not None:
             portapapeles.setText(self.salida.toPlainText())
 
-    def _restaurar(self, datos: dict) -> None:
+    def restaurar_datos(self, datos: dict) -> None:
         ecuaciones = datos.get("ecuaciones") or []
         if not ecuaciones:
             return

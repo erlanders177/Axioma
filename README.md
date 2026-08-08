@@ -56,7 +56,20 @@ Dieciséis módulos en una sola ventana, en español, sin conexión a internet.
 | **Geometría** | **61 figuras**: 36 planas y 25 cuerpos, con vista previa 2D/3D y las fórmulas aplicadas. Incluye **cálculo inverso**: «el área vale 50, ¿cuánto mide el lado?». |
 | **Combinatoria** | Factorial, combinaciones, permutaciones, variaciones, doble factorial, subfactorial, números de Catalan, función gamma y aproximación de Stirling. |
 
-Todos los módulos guardan su propio historial, con búsqueda, restauración con doble clic y exportación a CSV o TXT.
+### Todo conectado
+
+**Una barra de cálculo en todos los módulos.** Si está resolviendo una ecuación
+trigonométrica y necesita saber cuánto vale `5*sin(30)`, lo escribe sin salir de
+ahí. Lo que calcula **va al historial de ese módulo**, no a un cajón común, y las
+**variables se comparten**: defina `h = 5*sin(30)` y podrá usar `h` en los campos
+de cualquier módulo.
+
+**Los campos aceptan más que números.** Escriba `sqrt(16)`, una variable, o una
+unidad. En Geometría se pueden **mezclar**: radio `5 cm` y altura `50 mm` dan
+**392,699 cm³**, no «392,699 u³».
+
+Cada módulo conserva su historial separado, con búsqueda, restauración con doble
+clic y exportación a CSV o TXT.
 
 ### Paso a paso
 
@@ -173,6 +186,7 @@ Temas claro y oscuro, intercambiables con <kbd>Ctrl</kbd>+<kbd>T</kbd>.
 | <kbd>F1</kbd> | Abrir el manual |
 | <kbd>Intro</kbd> | Calcular en el módulo activo |
 | <kbd>Esc</kbd> | Limpiar la calculadora |
+| <kbd>Ctrl</kbd>+<kbd>Espacio</kbd> | Ir a la barra de cálculo |
 
 El manual completo está en [`docs/manual_usuario.html`](docs/manual_usuario.html).
 
@@ -208,6 +222,7 @@ Axioma/
 │   │   ├── complejos.py        aritmética compleja y forma polar
 │   │   ├── unidades.py         51 magnitudes, 555 unidades
 │   │   ├── magnitudes.py       aritmética con unidades (5 km + 300 m)
+│   │   ├── variables.py        variables compartidas entre módulos
 │   │   ├── figuras.py          61 figuras geométricas y cálculo inverso
 │   │   ├── bases.py            bases 2–36 y operaciones bit a bit
 │   │   ├── historial.py        persistencia del historial
@@ -217,6 +232,7 @@ Axioma/
 │   └── ui/                     interfaz (PyQt5)
 │       ├── ventana_principal.py
 │       ├── panel_*.py          un panel por módulo
+│       ├── barra_calculo.py    barra de cálculo de todos los módulos
 │       ├── grafica.py          lienzo de matplotlib compartido
 │       ├── visualizador.py     dibujo 2D/3D de figuras
 │       ├── comunes.py          widgets compartidos
@@ -241,7 +257,7 @@ pip install pytest
 python -m pytest tests/ -q
 ```
 
-478 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
+491 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
 unidades, las 61 figuras contra resultados conocidos, entradas maliciosas
 bloqueadas en el evaluador, resultados de libro comprobados (la serie de Fourier
 de x, la precisión relativa de Euler frente a Runge-Kutta) y los dieciséis

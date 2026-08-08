@@ -11,17 +11,20 @@ from PyQt5.QtWidgets import (
 )
 
 from ..core import complejos as cpx
-from ..core import historial as hist
 from ..core.config import config
 from . import tema
 from .comunes import (
-    CampoNumerico, PanelHistorial, TablaResultados, aviso, boton, etiqueta,
+    PanelModulo,
+    CampoNumerico, TablaResultados, aviso, boton, etiqueta,
     separador, tarjeta,
 )
 from .grafica import CICLO, PanelGrafica
 
 
-class PanelComplejos(QWidget):
+class PanelComplejos(PanelModulo):
+    MODULO = "complejos"
+    TITULO_HISTORIAL = "Historial"
+
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(padre)
         self.paleta = tema.paleta(config["tema"])
@@ -38,13 +41,8 @@ class PanelComplejos(QWidget):
         division.addWidget(self._crear_columna_entrada())
         division.addWidget(self._crear_columna_salida())
 
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial("complejos", "Historial")
-        self.historial.restaurar.connect(self._restaurar)
-        col_hist.addWidget(self.historial)
-        division.addWidget(marco_hist)
 
-        division.setSizes([340, 520, 280])
+        division.setSizes([340, 520])
         raiz.addWidget(division)
 
     def _crear_columna_entrada(self) -> QWidget:
@@ -262,11 +260,7 @@ class PanelComplejos(QWidget):
         self.calcular()
 
     def _guardar(self, operacion: str, datos: dict) -> None:
-        try:
-            entrada = hist.guardar("complejos", operacion, datos)
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial:
-            pass
+        self.guardar_en_historial(operacion, datos)
 
     def _copiar(self) -> None:
         from PyQt5.QtWidgets import QApplication
@@ -274,7 +268,7 @@ class PanelComplejos(QWidget):
         if portapapeles is not None:
             portapapeles.setText(self.tabla.texto_plano())
 
-    def _restaurar(self, datos: dict) -> None:
+    def restaurar_datos(self, datos: dict) -> None:
         claves = [c for c, _, _, _ in cpx.OPERACIONES]
         clave = datos.get("operacion")
         if clave in claves:

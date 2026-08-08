@@ -15,16 +15,18 @@ from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWidgets import (
     QAbstractItemView, QApplication, QHBoxLayout, QListWidget,
-    QListWidgetItem, QMainWindow, QMessageBox, QShortcut, QStackedWidget,
-    QStatusBar, QVBoxLayout, QWidget,
+    QListWidgetItem, QMainWindow, QMessageBox, QShortcut, QSplitter,
+    QStackedWidget, QStatusBar, QVBoxLayout, QWidget,
 )
 
 from .. import __autor__, __contacto__, __nombre__, __url__, __version__
 from ..core import figuras, unidades
+from ..core import historial as hist
 from ..core.config import config
 from ..core.rutas import dir_datos, recurso
 from . import tema
-from .comunes import boton, etiqueta
+from .barra_calculo import BarraCalculo
+from .comunes import PanelHistorial, boton, etiqueta, tarjeta
 from .panel_ajuste import PanelAjuste
 from .panel_bases import PanelBases
 from .panel_calculadora import PanelCalculadora
@@ -112,8 +114,30 @@ class VentanaPrincipal(QMainWindow):
         columna.setSpacing(12)
         columna.addLayout(self._crear_encabezado())
 
+        # El módulo activo y el historial comparten fila: el historial es único
+        # para toda la aplicación y va mostrando el del apartado en el que está.
+        self.division = QSplitter(Qt.Horizontal)
         self.pila = QStackedWidget()
-        columna.addWidget(self.pila, 1)
+        self.division.addWidget(self.pila)
+
+        marco_hist, col_hist = tarjeta()
+        self.historial = PanelHistorial(MODULOS[0][0], "Historial")
+        self.historial.restaurar.connect(self._restaurar_en_el_panel_activo)
+        col_hist.addWidget(self.historial)
+        self.division.addWidget(marco_hist)
+
+        self.division.setStretchFactor(0, 1)
+        self.division.setStretchFactor(1, 0)
+        self.division.setCollapsible(0, False)
+        self.division.setSizes([900, 320])
+        columna.addWidget(self.division, 1)
+
+        # La barra de cálculo está siempre disponible, sea cual sea el módulo.
+        self.barra = BarraCalculo()
+        self.barra.calculado.connect(self._guardar_calculo_de_la_barra)
+        self.barra.variables_cambiadas.connect(self._avisar_de_las_variables)
+        columna.addWidget(self.barra)
+
         raiz.addWidget(contenedor, 1)
 
         self.setStatusBar(QStatusBar())
@@ -210,6 +234,7 @@ class VentanaPrincipal(QMainWindow):
     def _atajos(self) -> None:
         QShortcut(QKeySequence("Ctrl+T"), self, self._alternar_tema)
         QShortcut(QKeySequence("F1"), self, self._abrir_manual)
+        QShortcut(QKeySequence("Ctrl+Space"), self, self.barra.enfocar)
         QShortcut(QKeySequence("Ctrl+Q"), self, self.close)
         # Sólo hay teclas del 1 al 9; el resto de módulos se abren con el ratón.
         for indice in range(min(9, len(MODULOS))):
@@ -255,6 +280,8 @@ class VentanaPrincipal(QMainWindow):
             antiguo.deleteLater()
             self.pila.insertWidget(indice, panel)
             self._paneles[clave] = panel
+            # Lo que guarde el panel aparece al momento en el historial común.
+            panel.guardado.connect(self.historial.anadir)
             if hasattr(panel, "aplicar_paleta"):
                 panel.aplicar_paleta(self.paleta)
 
@@ -262,6 +289,34 @@ class VentanaPrincipal(QMainWindow):
         self.titulo_modulo.setText(f"{icono}  {titulo_mod}")
         self.subtitulo_modulo.setText(descripcion)
         config["modulo_inicial"] = clave
+
+        panel = self._paneles[clave]
+        self.historial.cambiar_modulo(
+            panel.MODULO or clave,
+            getattr(panel, "TITULO_HISTORIAL", "Historial"),
+        )
+
+    def _restaurar_en_el_panel_activo(self, datos: dict) -> None:
+        """Reenvía la entrada del historial al panel que está a la vista."""
+        panel = self.pila.currentWidget()
+        if hasattr(panel, "restaurar_datos"):
+            panel.restaurar_datos(datos)
+
+    def _guardar_calculo_de_la_barra(self, operacion: str, datos: dict) -> None:
+        """Lo calculado en la barra pertenece al módulo en el que se está."""
+        panel = self.pila.currentWidget()
+        modulo = getattr(panel, "MODULO", "") or self.historial.modulo
+        try:
+            entrada = hist.guardar(modulo, operacion, datos)
+        except hist.ErrorHistorial:
+            return
+        self.historial.anadir(entrada)
+
+    def _avisar_de_las_variables(self) -> None:
+        """Permite a los paneles reaccionar si dependen de las variables."""
+        for panel in self._paneles.values():
+            if hasattr(panel, "variables_actualizadas"):
+                panel.variables_actualizadas()
 
     def _alternar_tema(self) -> None:
         nuevo = "claro" if self.paleta.nombre == "oscuro" else "oscuro"

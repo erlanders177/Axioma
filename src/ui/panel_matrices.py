@@ -9,9 +9,8 @@ from PyQt5.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from ..core import historial as hist
 from ..core import matrices as mat
-from .comunes import PanelHistorial, aviso, boton, etiqueta, separador, tarjeta
+from .comunes import PanelModulo, aviso, boton, etiqueta, separador, tarjeta
 
 EJEMPLOS = {
     "A": "1  2  3\n4  5  6\n7  8 10",
@@ -66,7 +65,10 @@ class EditorMatriz(QWidget):
         return mat.analizar_matriz(self.editor.toPlainText(), nombre)
 
 
-class PanelMatrices(QWidget):
+class PanelMatrices(PanelModulo):
+    MODULO = "matrices"
+    TITULO_HISTORIAL = "Historial"
+
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(padre)
         self._construir()
@@ -82,13 +84,8 @@ class PanelMatrices(QWidget):
         division.addWidget(self._crear_columna_entrada())
         division.addWidget(self._crear_columna_salida())
 
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial("matrices", "Historial")
-        self.historial.restaurar.connect(self._restaurar)
-        col_hist.addWidget(self.historial)
-        division.addWidget(marco_hist)
 
-        division.setSizes([390, 460, 290])
+        division.setSizes([390, 460])
         raiz.addWidget(division)
 
     def _crear_columna_entrada(self) -> QWidget:
@@ -219,16 +216,12 @@ class PanelMatrices(QWidget):
 
         resumen = next((v.replace("\n", " ") for _, v in filas if v), "")
         operacion = f"{titulo}  ({a.rows}×{a.cols})  →  {resumen[:70]}"
-        try:
-            entrada = hist.guardar("matrices", operacion, {
-                "operacion": clave,
-                "a": self.editor_a.texto(),
-                "b": self.editor_b.texto() if necesita_b else "",
-                "extra": self.spin_extra.value(),
-            })
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial:
-            pass
+        self.guardar_en_historial(operacion, {
+            "operacion": clave,
+            "a": self.editor_a.texto(),
+            "b": self.editor_b.texto() if necesita_b else "",
+            "extra": self.spin_extra.value(),
+        })
 
     # ---------------------------------------------------------------- varios -- #
 
@@ -253,7 +246,7 @@ class PanelMatrices(QWidget):
         if portapapeles is not None:
             portapapeles.setText(self.salida.toPlainText())
 
-    def _restaurar(self, datos: dict) -> None:
+    def restaurar_datos(self, datos: dict) -> None:
         claves_unarias = [c for c, _, _ in mat.OPERACIONES_UNARIAS]
         claves_binarias = [c for c, _ in mat.OPERACIONES_BINARIAS]
         clave = datos.get("operacion")

@@ -10,12 +10,12 @@ from PyQt5.QtWidgets import (
 )
 
 from ..core import edo
-from ..core import historial as hist
 from ..core import numerico
 from ..core.config import config
 from . import tema
 from .comunes import (
-    PanelHistorial, TablaResultados, aviso, boton, etiqueta, separador, tarjeta,
+    PanelModulo,
+    TablaResultados, aviso, boton, etiqueta, separador, tarjeta,
 )
 from .grafica import CICLO, PanelGrafica
 
@@ -29,7 +29,10 @@ EJEMPLOS = [
 ]
 
 
-class PanelEDO(QWidget):
+class PanelEDO(PanelModulo):
+    MODULO = "edo"
+    TITULO_HISTORIAL = "Historial"
+
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(padre)
         self.paleta = tema.paleta(config["tema"])
@@ -49,13 +52,8 @@ class PanelEDO(QWidget):
         division.addWidget(self._crear_columna_entrada())
         division.addWidget(self._crear_columna_salida())
 
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial("edo", "Historial")
-        self.historial.restaurar.connect(self._restaurar)
-        col_hist.addWidget(self.historial)
-        division.addWidget(marco_hist)
 
-        division.setSizes([380, 500, 280])
+        division.setSizes([380, 500])
         raiz.addWidget(division)
 
     def _crear_columna_entrada(self) -> QWidget:
@@ -380,11 +378,7 @@ class PanelEDO(QWidget):
     # ---------------------------------------------------------------- varios -- #
 
     def _guardar(self, operacion: str, datos: dict) -> None:
-        try:
-            entrada = hist.guardar("edo", operacion, datos)
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial:
-            pass
+        self.guardar_en_historial(operacion, datos)
 
     def limpiar(self) -> None:
         self.entrada.clear()
@@ -412,7 +406,7 @@ class PanelEDO(QWidget):
         if portapapeles is not None:
             portapapeles.setText(self.tabla.texto_plano())
 
-    def _restaurar(self, datos: dict) -> None:
+    def restaurar_datos(self, datos: dict) -> None:
         modos = ["exacta", "laplace", "sistema", "numerico"]
         modo = datos.get("modo", "exacta")
         if modo in modos:

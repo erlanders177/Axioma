@@ -10,13 +10,13 @@ from PyQt5.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from ..core import historial as hist
 from ..core import simbolico as sim
 from ..core import transformadas as tr
 from ..core.config import config
 from . import tema
 from .comunes import (
-    PanelHistorial, TablaResultados, aviso, boton, etiqueta, separador, tarjeta,
+    PanelModulo,
+    TablaResultados, aviso, boton, etiqueta, separador, tarjeta,
 )
 from .grafica import CICLO, PanelGrafica, cortar_saltos, muestrear
 
@@ -29,7 +29,10 @@ EJEMPLOS = {
 }
 
 
-class PanelTransformadas(QWidget):
+class PanelTransformadas(PanelModulo):
+    MODULO = "transformadas"
+    TITULO_HISTORIAL = "Historial"
+
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(padre)
         self.paleta = tema.paleta(config["tema"])
@@ -46,13 +49,8 @@ class PanelTransformadas(QWidget):
         division.addWidget(self._crear_columna_entrada())
         division.addWidget(self._crear_columna_salida())
 
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial("transformadas", "Historial")
-        self.historial.restaurar.connect(self._restaurar)
-        col_hist.addWidget(self.historial)
-        division.addWidget(marco_hist)
 
-        division.setSizes([350, 520, 270])
+        division.setSizes([350, 520])
         raiz.addWidget(division)
 
     def _crear_columna_entrada(self) -> QWidget:
@@ -273,11 +271,7 @@ class PanelTransformadas(QWidget):
     # ---------------------------------------------------------------- varios -- #
 
     def _guardar(self, operacion: str, datos: dict) -> None:
-        try:
-            entrada = hist.guardar("transformadas", operacion, datos)
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial:
-            pass
+        self.guardar_en_historial(operacion, datos)
 
     def _cargar_ejemplo(self) -> None:
         self.entrada.setText(EJEMPLOS.get(self._clave, "t^2"))
@@ -289,7 +283,7 @@ class PanelTransformadas(QWidget):
         if portapapeles is not None:
             portapapeles.setText(self.tabla.texto_plano())
 
-    def _restaurar(self, datos: dict) -> None:
+    def restaurar_datos(self, datos: dict) -> None:
         claves = [c for c, _, _ in tr.OPERACIONES]
         clave = datos.get("operacion")
         if clave in claves:

@@ -9,23 +9,28 @@ from PyQt5.QtWidgets import (
 )
 
 from ..core import figuras as geo
-from ..core import historial as hist
 from ..core.config import config
 from ..core.formato import formatear, normalizar
 from . import tema
 from .comunes import (
-    CampoNumerico, PanelHistorial, TablaResultados, aviso, boton, etiqueta,
+    PanelModulo,
+    CampoNumerico, TablaResultados, aviso, boton, etiqueta,
     separador, tarjeta,
 )
 from .visualizador import LienzoFigura
 
 
-class PanelGeometria(QWidget):
+class PanelGeometria(PanelModulo):
+    MODULO = "geometria"
+    TITULO_HISTORIAL = "Historial"
+
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(padre)
         self._campos: dict[str, CampoNumerico] = {}
         self._cargando = False
         self._ultimo_calculo: tuple | None = None
+        #: Unidad de longitud elegida por el usuario, si dio alguna.
+        self._unidad = None
         self._construir()
         self._cargar_grupos()
 
@@ -39,13 +44,8 @@ class PanelGeometria(QWidget):
         division.addWidget(self._crear_columna_datos())
         division.addWidget(self._crear_columna_resultados())
 
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial("geometria", "Historial")
-        self.historial.restaurar.connect(self._restaurar)
-        col_hist.addWidget(self.historial)
-        division.addWidget(marco_hist)
 
-        division.setSizes([330, 470, 320])
+        division.setSizes([330, 470])
         raiz.addWidget(division)
 
     def _crear_columna_datos(self) -> QWidget:
@@ -226,6 +226,10 @@ class PanelGeometria(QWidget):
             elemento = self.formulario.takeAt(0)
             widget = elemento.widget()
             if widget is not None:
+                # setParent(None) lo quita de la pantalla ya; deleteLater solo
+                # actúa al volver al bucle de eventos, y hasta entonces el widget
+                # se sigue dibujando encima del que ocupa ahora su sitio.
+                widget.setParent(None)
                 widget.deleteLater()
 
     def _cambiar_figura(self, nombre: str) -> None:
@@ -235,7 +239,8 @@ class PanelGeometria(QWidget):
 
         self._limpiar_formulario()
         for parametro in figura.parametros:
-            campo = CampoNumerico(_marcador(parametro))
+            admite = parametro.unidad in ("u", "u²", "u³")
+            campo = CampoNumerico(_marcador(parametro), unidades=admite)
             campo.aceptado.connect(self._calcular_y_guardar)
             if parametro.ayuda:
                 campo.setToolTip(parametro.ayuda)
@@ -341,18 +346,62 @@ class PanelGeometria(QWidget):
     # -------------------------------------------------------------- cálculo -- #
 
     def _leer_valores(self) -> dict | None:
-        valores: dict[str, float] = {}
+        """Lee los campos, unificando las unidades si se han mezclado.
+
+        Permite escribir el radio en centímetros y la altura en milímetros: todo
+        se convierte a la primera unidad que aparezca, y los resultados se
+        expresan en ella.
+        """
+        figura = geo.figura(self.combo_figura.currentText())
+        # En orden, no en un conjunto: la unidad de referencia es la del primer
+        # campo que la lleve, y eso tiene que ser reproducible.
+        longitudes = [p.simbolo for p in figura.parametros
+                      if p.unidad in ("u", "u²", "u³")]
+
+        cantidades: dict[str, object] = {}
         for simbolo, campo in self._campos.items():
             try:
-                valor = campo.valor(obligatorio=False)
+                cantidad = campo.cantidad(obligatorio=False)
             except ValueError as e:
                 aviso(self, str(e), "Datos incorrectos")
                 campo.setFocus()
                 return None
-            if valor is None:
+            if cantidad is None:
                 return None
-            valores[simbolo] = valor
+            cantidades[simbolo] = cantidad
+
+        # La unidad de referencia es la primera que aparezca en un campo de
+        # longitud; el resto se convierte a ella.
+        referencia = None
+        for simbolo in longitudes:
+            cantidad = cantidades.get(simbolo)
+            if cantidad is not None and cantidad.unidad is not None:
+                if cantidad.categoria != "Longitud":
+                    aviso(self, f"«{cantidad.unidad.simbolo}» no es una unidad de "
+                                f"longitud.", "Unidades")
+                    return None
+                referencia = cantidad.unidad
+                break
+
+        valores: dict[str, float] = {}
+        for simbolo, cantidad in cantidades.items():
+            if referencia is not None and simbolo in longitudes and cantidad.unidad:
+                try:
+                    cantidad = cantidad.convertida_a(referencia)
+                except Exception as e:
+                    aviso(self, str(e), "Unidades")
+                    return None
+            valores[simbolo] = cantidad.valor
+
+        self._unidad = referencia
         return valores
+
+    def _con_unidad(self, sufijo: str) -> str:
+        """Traduce «u», «u²» y «u³» a la unidad real si el usuario dio alguna."""
+        if self._unidad is None or sufijo not in ("u", "u²", "u³"):
+            return sufijo
+        simbolo = self._unidad.simbolo
+        return simbolo + sufijo[1:]
 
     def calcular(self, *, silencioso: bool = False) -> None:
         nombre = self.combo_figura.currentText()
@@ -386,7 +435,7 @@ class PanelGeometria(QWidget):
 
         decimales = config["decimales"]
         self.tabla.mostrar([
-            (r.etiqueta, formatear(r.valor, decimales, unidad=r.unidad))
+            (r.etiqueta, formatear(r.valor, decimales, unidad=self._con_unidad(r.unidad)))
             for r in resultados
         ])
 
@@ -410,17 +459,13 @@ class PanelGeometria(QWidget):
         nombre, valores, resultados = datos
         decimales = config["decimales"]
         resumen = ", ".join(
-            f"{r.etiqueta}: {formatear(r.valor, decimales, unidad=r.unidad)}"
+            f"{r.etiqueta}: {formatear(r.valor, decimales, unidad=self._con_unidad(r.unidad))}"
             for r in resultados[:3]
         )
-        try:
-            entrada = hist.guardar("geometria", f"{nombre} → {resumen}", {
-                "figura": nombre,
-                "valores": valores,
-            })
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial as e:
-            aviso(self, str(e), "Historial")
+        self.guardar_en_historial(f"{nombre} → {resumen}", {
+            "figura": nombre,
+            "valores": valores,
+        })
 
     # ---------------------------------------------------------------- varios -- #
 
@@ -431,7 +476,7 @@ class PanelGeometria(QWidget):
             nombre = self.combo_figura.currentText()
             portapapeles.setText(f"{nombre}\n{self.tabla.texto_plano()}")
 
-    def _restaurar(self, datos: dict) -> None:
+    def restaurar_datos(self, datos: dict) -> None:
         nombre = datos.get("figura")
         if not nombre or nombre not in geo.FIGURAS:
             return
@@ -450,9 +495,9 @@ class PanelGeometria(QWidget):
 
 
 def _marcador(parametro: geo.Parametro) -> str:
-    """Texto de ayuda dentro del campo, con el rango admitido."""
+    """Texto de ayuda dentro del campo."""
     if parametro.entero:
         return "número entero"
     if parametro.unidad == "°":
         return "grados"
-    return "valor"
+    return "valor  ·  admite 5 cm, 50 mm…"

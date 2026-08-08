@@ -85,31 +85,68 @@ def confirmar(padre: QWidget, mensaje: str, titulo: str = "Confirmar") -> bool:
 
 
 class CampoNumerico(QLineEdit):
-    """Campo de texto para números que acepta coma o punto decimal."""
+    """Campo de texto para números, expresiones, variables y unidades.
+
+    Además de un número suelto acepta:
+
+    * expresiones (``2*pi``, ``sqrt(2)``, ``5*sin(30)``);
+    * las variables definidas en la barra de cálculo (``r``, ``h``…);
+    * unidades, si el campo se crea con ``unidades=True`` (``5 cm``, ``50 mm``).
+
+    Así no hay que salir del módulo a calcular un dato para volver a teclearlo.
+    """
 
     aceptado = pyqtSignal()
 
-    def __init__(self, marcador: str = "0", padre: QWidget | None = None) -> None:
+    def __init__(self, marcador: str = "0", padre: QWidget | None = None, *,
+                 unidades: bool = False) -> None:
         super().__init__(padre)
+        self.admite_unidades = unidades
         self.setPlaceholderText(marcador)
         self.setAlignment(Qt.AlignRight)
         self.returnPressed.connect(self.aceptado.emit)
 
     def valor(self, *, obligatorio: bool = True) -> float | None:
-        """Devuelve el número escrito, o ``None`` si el campo está vacío.
+        """Número que representa el campo, ignorando la unidad si la lleva.
 
         Raises:
-            ValueError: si el texto no es un número.
+            ValueError: con un mensaje explicando por qué no se entiende.
         """
-        texto = self.text().strip().replace(",", ".")
-        if not texto:
+        cantidad = self.cantidad(obligatorio=obligatorio)
+        return None if cantidad is None else cantidad.valor
+
+    def cantidad(self, *, obligatorio: bool = True):
+        """Devuelve una ``magnitudes.Cantidad`` (valor y unidad), o ``None``."""
+        from ..core import magnitudes
+        from ..core import variables as vars_compartidas
+        from ..core.config import config
+        from ..core.evaluador import ErrorExpresion, evaluar
+
+        crudo = self.text().strip()
+        if not crudo:
             if obligatorio:
                 raise ValueError("Falta un valor")
             return None
+
+        # 1. Un número suelto es lo más frecuente: se prueba primero.
         try:
-            return float(texto)
+            return magnitudes.Cantidad(float(crudo.replace(",", ".")))
         except ValueError:
-            raise ValueError(f"«{self.text().strip()}» no es un número válido") from None
+            pass
+
+        # 2. Con unidades, si el campo las admite.
+        if self.admite_unidades and magnitudes.contiene_unidades(crudo):
+            try:
+                return magnitudes.evaluar(crudo)
+            except magnitudes.ErrorMagnitud as e:
+                raise ValueError(str(e)) from None
+
+        # 3. Expresión o variable.
+        try:
+            valor = evaluar(crudo, config["modo_angulo"], vars_compartidas.valores())
+        except ErrorExpresion as e:
+            raise ValueError(f"«{crudo}»: {e}") from None
+        return magnitudes.Cantidad(float(valor))
 
     def poner(self, valor: float | str) -> None:
         self.setText(valor if isinstance(valor, str) else formatear(valor, 10))
@@ -204,9 +241,14 @@ def formatear_pasos(pasos: list, ancho_sangria: int = 4) -> str:
 class PanelHistorial(QWidget):
     """Lista de operaciones guardadas, con búsqueda, borrado y exportación.
 
+    Hay **uno solo** para toda la aplicación, en la ventana principal, y va
+    mostrando el historial del módulo activo. Antes cada panel llevaba el suyo:
+    dieciséis copias de unos 350 px de ancho cada una, repitiendo el mismo
+    espacio en pantalla y el mismo código.
+
     Cada elemento recuerda el **id** de su entrada, así el borrado nunca afecta a
     la fila equivocada aunque la lista se haya filtrado o reordenado (el bug de
-    la versión anterior, que borraba por posición).
+    la versión 1, que borraba por posición).
     """
 
     restaurar = pyqtSignal(dict)
@@ -218,13 +260,24 @@ class PanelHistorial(QWidget):
         self._construir(titulo)
         self.recargar()
 
+    def cambiar_modulo(self, modulo: str, titulo: str = "") -> None:
+        """Pasa a mostrar el historial de otro módulo."""
+        if modulo == self.modulo:
+            return
+        self.modulo = modulo
+        if titulo:
+            self.titulo.setText(titulo)
+        self.buscador.clear()
+        self.recargar()
+
     def _construir(self, titulo: str) -> None:
         disposicion = QVBoxLayout(self)
         disposicion.setContentsMargins(0, 0, 0, 0)
         disposicion.setSpacing(8)
 
         cabecera = QHBoxLayout()
-        cabecera.addWidget(etiqueta(titulo, "seccion"))
+        self.titulo = etiqueta(titulo, "seccion")
+        cabecera.addWidget(self.titulo)
         cabecera.addStretch()
         self.contador = etiqueta("", "subtitulo")
         cabecera.addWidget(self.contador)
@@ -359,3 +412,47 @@ class PanelHistorial(QWidget):
             aviso(self, str(e), "Exportar")
             return
         informar(self, f"Se exportaron {lineas} operaciones a:\n{ruta}", "Exportado")
+
+
+# --------------------------------------------------------------------------- #
+# Base de todos los paneles
+# --------------------------------------------------------------------------- #
+
+
+class PanelModulo(QWidget):
+    """Base común de los dieciséis módulos.
+
+    Se encarga del historial, que ya no vive dentro de cada panel sino en la
+    ventana principal: el panel sólo declara a qué módulo pertenece y avisa
+    cuando guarda algo. Así el historial ocupa espacio en pantalla una vez en
+    lugar de dieciséis, y sigue estando separado por apartados.
+    """
+
+    #: Clave del módulo en ``core.historial.MODULOS``.
+    MODULO: str = ""
+    #: Título que muestra el historial cuando este panel está activo.
+    TITULO_HISTORIAL: str = "Historial"
+
+    #: Se emite con la entrada recién guardada, para que la ventana la muestre.
+    guardado = pyqtSignal(dict)
+
+    def guardar_en_historial(self, operacion: str,
+                             datos: dict | None = None) -> dict | None:
+        """Guarda una operación y avisa a la ventana. Devuelve la entrada."""
+        if not self.MODULO:
+            return None
+        try:
+            entrada = hist.guardar(self.MODULO, operacion, datos or {})
+        except hist.ErrorHistorial as e:
+            aviso(self, str(e), "Historial")
+            return None
+        self.guardado.emit(entrada)
+        return entrada
+
+    # -- métodos que cada panel concreta ----------------------------------- #
+
+    def restaurar_datos(self, datos: dict) -> None:
+        """Vuelve a cargar una operación del historial. Lo redefine cada panel."""
+
+    def aplicar_paleta(self, paleta) -> None:
+        """Reacciona al cambio de tema. Sólo hace falta si el panel dibuja."""

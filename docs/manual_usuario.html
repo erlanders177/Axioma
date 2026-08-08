@@ -63,7 +63,7 @@
 <main>
 
 <h1>Axioma</h1>
-<p class="lema">Calculadora científica multifunción · Manual de usuario · versión 3.2</p>
+<p class="lema">Calculadora científica multifunción · Manual de usuario · versión 3.3</p>
 
 <div class="indice">
   <strong>Contenido</strong>
@@ -93,9 +93,10 @@
 <!-- ==================================================================== -->
 <h2 id="general">1. Cómo se usa la aplicación</h2>
 <p>
-  Los dieciséis módulos viven en una sola ventana, agrupados por temas en el menú lateral. El menú de la izquierda cambia de
-  módulo; a la derecha de cada uno hay un historial que guarda automáticamente lo
-  que va calculando.
+  Los dieciséis módulos viven en una sola ventana, agrupados por temas en el menú
+  lateral. El menú de la izquierda cambia de módulo; a la derecha hay un
+  historial, que va mostrando el del módulo en el que está, y abajo una
+  <a href="#barra">barra de cálculo</a> disponible en todos ellos.
 </p>
 
 <h3>Cómo escribir las expresiones</h3>
@@ -119,8 +120,35 @@
   <tr><td><kbd>Ctrl</kbd>+<kbd>Q</kbd></td><td>Cerrar la aplicación</td></tr>
   <tr><td><kbd>Intro</kbd></td><td>Calcular / resolver en el módulo activo</td></tr>
   <tr><td><kbd>Esc</kbd></td><td>Limpiar la pantalla de la calculadora</td></tr>
-  <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Recorrer las operaciones anteriores (en la calculadora)</td></tr>
+  <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Recorrer las operaciones anteriores</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>Espacio</kbd></td><td>Ir a la barra de cálculo</td></tr>
 </table>
+
+<h3 id="barra">La barra de cálculo</h3>
+<p>
+  En la parte inferior, y en <strong>todos</strong> los módulos, hay una línea
+  para hacer cuentas sin salir de donde está. Si está resolviendo una ecuación
+  trigonométrica y necesita saber cuánto vale <code>5*sin(30)</code>, lo escribe
+  ahí sin perder el contexto.
+</p>
+<ul>
+  <li>Admite lo mismo que la calculadora, incluidas <b>unidades</b>: <code>3 km + 200 m</code>.</li>
+  <li>Lo que calcula <b>va al historial del módulo en el que está</b>, no a un cajón común: si trabaja en una figura geométrica, esa cuenta pertenece a ese problema.</li>
+  <li>Las <b>variables se comparten</b>. Escriba <code>h = 5*sin(30)</code> y podrá usar <code>h</code> en los campos del módulo, en la calculadora o dentro de una ecuación.</li>
+  <li><kbd>↑</kbd> y <kbd>↓</kbd> recorren lo ya calculado.</li>
+</ul>
+<div class="aviso">
+  Las variables guardan <b>números sin unidad</b>. Por eso <code>alto = 50 mm</code>
+  se rechaza: si se admitiera, usar <code>alto</code> en un campo en centímetros
+  valdría 50 cm sin avisar. Convierta antes y use el número.
+</div>
+
+<h3>Los campos aceptan más que números</h3>
+<p>
+  En los campos de datos de los módulos puede escribir una expresión
+  (<code>sqrt(16)</code>), una variable (<code>radio</code>) y, donde tenga
+  sentido, una unidad (<code>5 cm</code>).
+</p>
 
 <!-- ==================================================================== -->
 <h2 id="calculadora">2. Calculadora científica</h2>
@@ -518,10 +546,17 @@
   revolución.
 </p>
 
+<h3>Unidades</h3>
+<p>
+  Los campos de longitud aceptan unidades, y se pueden <b>mezclar</b>: un
+  cilindro de radio <code>5 cm</code> y altura <code>50 mm</code> se resuelve
+  bien y da <b>392,699 cm³</b>. Todo se convierte a la unidad del primer campo
+  que la lleve, y los resultados salen en ella.
+</p>
 <div class="aviso">
-  Las unidades son genéricas: si introduce los datos en centímetros, las áreas
-  salen en cm² (<code>u²</code>) y los volúmenes en cm³ (<code>u³</code>).
-  Los ángulos siempre se introducen y se muestran en grados.
+  Si no indica ninguna unidad, se usan las genéricas: las áreas salen en
+  <code>u²</code> y los volúmenes en <code>u³</code>, con el significado que
+  usted les dé. Los ángulos siempre se introducen y se muestran en grados.
 </div>
 
 <p>
@@ -613,7 +648,13 @@
 
 <!-- ==================================================================== -->
 <h2 id="historial">18. El historial</h2>
-<p>Cada módulo guarda su propio historial, con estas opciones:</p>
+<p>
+  El panel de la derecha muestra el historial del módulo en el que está, y cambia
+  al cambiar de módulo. Cada módulo conserva el suyo por separado: lo que calcule
+  trabajando en una figura geométrica no se mezcla con las cuentas de la
+  calculadora, aunque lo haya escrito en la barra de abajo.
+</p>
+<p>Opciones:</p>
 <ul>
   <li><strong>Buscar</strong>: filtra las operaciones según lo que escriba (sin distinguir tildes ni mayúsculas).</li>
   <li><strong>Doble clic</strong>: vuelve a cargar esa operación con todos sus datos.</li>
@@ -642,7 +683,7 @@
 
 <footer>
   <p>
-    <strong>Axioma 3.2</strong> · calculadora científica multifunción<br>
+    <strong>Axioma 3.3</strong> · calculadora científica multifunción<br>
     Desarrollador: Aarón Aranda Torrijos (@erlanders177) —
     <a href="mailto:aaron.aranda.t@gmail.com">aaron.aranda.t@gmail.com</a><br>
     Proyecto: <a href="https://github.com/erlanders177/Axioma">github.com/erlanders177/Axioma</a><br>

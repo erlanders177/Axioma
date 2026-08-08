@@ -10,11 +10,10 @@ from PyQt5.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from ..core import historial as hist
 from ..core import simbolico as sim
 from ..core.config import config
 from . import tema
-from .comunes import CampoNumerico, PanelHistorial, aviso, boton, etiqueta, separador, tarjeta
+from .comunes import PanelModulo, CampoNumerico, aviso, boton, etiqueta, separador, tarjeta
 from .grafica import CICLO, PanelGrafica, cortar_saltos, muestrear
 
 MAX_FUNCIONES = 4
@@ -29,7 +28,10 @@ EJEMPLOS = [
 ]
 
 
-class PanelGraficador(QWidget):
+class PanelGraficador(PanelModulo):
+    MODULO = "graficador"
+    TITULO_HISTORIAL = "Historial"
+
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(padre)
         self.paleta = tema.paleta(config["tema"])
@@ -116,12 +118,6 @@ class PanelGraficador(QWidget):
         col.addLayout(acciones)
         col.addStretch()
         columna.addWidget(marco, 1)
-
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial("graficador", "Historial")
-        self.historial.restaurar.connect(self._restaurar)
-        col_hist.addWidget(self.historial)
-        columna.addWidget(marco_hist, 1)
 
         return contenedor
 
@@ -314,15 +310,11 @@ class PanelGraficador(QWidget):
     def _guardar(self, textos: list[str], minimo: float, maximo: float) -> None:
         activas = [t for t in textos if t]
         operacion = f"{'  |  '.join(activas)}   en [{minimo:g}, {maximo:g}]"
-        try:
-            entrada = hist.guardar("graficador", operacion, {
-                "funciones": textos,
-                "x_min": minimo,
-                "x_max": maximo,
-            })
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial:
-            pass
+        self.guardar_en_historial(operacion, {
+            "funciones": textos,
+            "x_min": minimo,
+            "x_max": maximo,
+        })
 
     def limpiar(self) -> None:
         for campo in self.campos:
@@ -339,7 +331,7 @@ class PanelGraficador(QWidget):
         self.x_max.setText("10")
         self.dibujar()
 
-    def _restaurar(self, datos: dict) -> None:
+    def restaurar_datos(self, datos: dict) -> None:
         funciones = datos.get("funciones") or []
         for campo, texto_funcion in zip(self.campos, funciones):
             campo.setText(str(texto_funcion))

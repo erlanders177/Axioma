@@ -9,9 +9,9 @@ from PyQt5.QtWidgets import (
 )
 
 from ..core import bases
-from ..core import historial as hist
 from .comunes import (
-    PanelHistorial, TablaResultados, aviso, boton, etiqueta, separador, tarjeta,
+    PanelModulo,
+    TablaResultados, aviso, boton, etiqueta, separador, tarjeta,
 )
 
 #: Atajos del desplegable de bases habituales.
@@ -22,7 +22,10 @@ BASES_HABITUALES = [
 ]
 
 
-class PanelBases(QWidget):
+class PanelBases(PanelModulo):
+    MODULO = "bases"
+    TITULO_HISTORIAL = "Historial de conversiones"
+
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(padre)
         self._construir()
@@ -37,15 +40,9 @@ class PanelBases(QWidget):
         division = QSplitter(Qt.Horizontal)
         division.addWidget(self._crear_columna())
 
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial("bases", "Historial de conversiones")
-        self.historial.restaurar.connect(self._restaurar)
-        col_hist.addWidget(self.historial)
-        division.addWidget(marco_hist)
 
         division.setStretchFactor(0, 3)
-        division.setStretchFactor(1, 2)
-        division.setSizes([660, 400])
+        division.setSizes([660])
         raiz.addWidget(division)
 
     def _crear_columna(self) -> QWidget:
@@ -199,17 +196,13 @@ class PanelBases(QWidget):
         resultado = dict(filas).get("Resultado (decimal)", "")
         etiqueta_operacion = (f"NOT {a}" if operacion == "NOT"
                               else f"{a} {operacion} {b}")
-        try:
-            entrada = hist.guardar("bases", f"{etiqueta_operacion} = {resultado}", {
-                "modo": "bits",
-                "operacion": operacion,
-                "a": a,
-                "b": b,
-                "ancho": ancho or 0,
-            })
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial:
-            pass
+        self.guardar_en_historial(f"{etiqueta_operacion} = {resultado}", {
+            "modo": "bits",
+            "operacion": operacion,
+            "a": a,
+            "b": b,
+            "ancho": ancho or 0,
+        })
 
     def _crear_selector_base(self, inicial: int) -> tuple[QSpinBox, QComboBox]:
         spin = QSpinBox()
@@ -316,17 +309,13 @@ class PanelBases(QWidget):
         operacion = (
             f"{texto.upper()} (base {base_origen}) → {resultado} (base {base_destino})"
         )
-        try:
-            entrada = hist.guardar("bases", operacion, {
-                "numero": texto,
-                "base_origen": base_origen,
-                "base_destino": base_destino,
-                "decimales": decimales,
-                "resultado": resultado,
-            })
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial as e:
-            aviso(self, str(e), "Historial")
+        self.guardar_en_historial(operacion, {
+            "numero": texto,
+            "base_origen": base_origen,
+            "base_destino": base_destino,
+            "decimales": decimales,
+            "resultado": resultado,
+        })
 
     # ---------------------------------------------------------------- varios -- #
 
@@ -341,7 +330,7 @@ class PanelBases(QWidget):
         if portapapeles is not None:
             portapapeles.setText(self.resultado.text())
 
-    def _restaurar(self, datos: dict) -> None:
+    def restaurar_datos(self, datos: dict) -> None:
         if datos.get("modo") == "bits":
             self.combo_bits.setCurrentText(str(datos.get("operacion", "AND")))
             self.bits_a.setText(str(datos.get("a", "")))

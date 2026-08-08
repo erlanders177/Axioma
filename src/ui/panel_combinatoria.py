@@ -21,10 +21,10 @@ from PyQt5.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from ..core import historial as hist
 from ..core.formato import formatear, formatear_entero_grande
 from .comunes import (
-    CampoNumerico, PanelHistorial, aviso, boton, etiqueta, separador, tarjeta,
+    PanelModulo,
+    CampoNumerico, aviso, boton, etiqueta, separador, tarjeta,
 )
 
 #: Por encima de este valor no se calcula el factorial exacto (tardaría demasiado
@@ -37,7 +37,10 @@ class ErrorCombinatoria(ValueError):
     """Los datos no son válidos para esta operación."""
 
 
-class PanelCombinatoria(QWidget):
+class PanelCombinatoria(PanelModulo):
+    MODULO = "combinatoria"
+    TITULO_HISTORIAL = "Historial de cálculos"
+
     #: (clave, título, etiquetas de los parámetros necesarios)
     OPERACIONES = [
         ("factorial", "Factorial  n!", ["n"]),
@@ -68,15 +71,9 @@ class PanelCombinatoria(QWidget):
         division = QSplitter(Qt.Horizontal)
         division.addWidget(self._crear_columna())
 
-        marco_hist, col_hist = tarjeta()
-        self.historial = PanelHistorial("combinatoria", "Historial de cálculos")
-        self.historial.restaurar.connect(self._restaurar)
-        col_hist.addWidget(self.historial)
-        division.addWidget(marco_hist)
 
         division.setStretchFactor(0, 3)
-        division.setStretchFactor(1, 2)
-        division.setSizes([680, 380])
+        division.setSizes([680])
         raiz.addWidget(division)
 
     def _crear_columna(self) -> QWidget:
@@ -129,6 +126,10 @@ class PanelCombinatoria(QWidget):
             elemento = self.formulario.takeAt(0)
             widget = elemento.widget()
             if widget is not None:
+                # setParent(None) lo quita de la pantalla ya; deleteLater solo
+                # actúa al volver al bucle de eventos, y hasta entonces el widget
+                # se sigue dibujando encima del que ocupa ahora su sitio.
+                widget.setParent(None)
                 widget.deleteLater()
         self.campos.clear()
 
@@ -181,11 +182,7 @@ class PanelCombinatoria(QWidget):
         self.salida.setPlainText(texto)
         datos = {"operacion": clave,
                  "valores": {n: c.text() for n, c in self.campos.items()}}
-        try:
-            entrada = hist.guardar("combinatoria", operacion, datos)
-            self.historial.anadir(entrada)
-        except hist.ErrorHistorial as e:
-            aviso(self, str(e), "Historial")
+        self.guardar_en_historial(operacion, datos)
 
     # -- operaciones ------------------------------------------------------- #
 
@@ -382,7 +379,7 @@ class PanelCombinatoria(QWidget):
         if portapapeles is not None:
             portapapeles.setText(self.salida.toPlainText())
 
-    def _restaurar(self, datos: dict) -> None:
+    def restaurar_datos(self, datos: dict) -> None:
         clave = datos.get("operacion")
         claves = [c for c, _, _ in self.OPERACIONES]
         if clave in claves:
