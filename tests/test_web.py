@@ -175,3 +175,29 @@ def test_no_hay_errores_de_javascript(pagina):
     pagina.click("#menu-conversiones")
     pagina.wait_for_timeout(300)
     assert not pagina.errores, pagina.errores
+
+
+def test_el_aviso_de_instalacion_se_escucha_desde_el_principio(pagina):
+    """El navegador avisa al cargar; si se escucha tarde, se pierde.
+
+    Ese aviso (`beforeinstallprompt`) es lo único que permite instalar con un
+    toque en lugar de mandar al usuario a rebuscar por los menús. Llegaba antes
+    de que el motor de cálculo terminara de cargar, así que el detector tiene
+    que estar puesto desde la primera línea de la página.
+    """
+    assert pagina.evaluate("'__peticionInstalacion' in window"), (
+        "el detector no está registrado: se perdería el aviso del navegador"
+    )
+    # Y el registro ocurre en el HTML, antes de cargar app.js.
+    html = pagina.content()
+    assert html.index("beforeinstallprompt") < html.index("app.js")
+
+
+def test_si_no_hay_instalacion_automatica_se_ofrece_el_apk(pagina):
+    """En un navegador sin instalación nativa, «Instalar» lleva al APK."""
+    pagina.on("dialog", lambda d: d.accept())          # acepta el «¿descargar?»
+    with pagina.expect_download(timeout=30000) as descarga:
+        pagina.click("#btn-instalar")
+    # La URL final no es la de GitHub: redirige a su almacén de descargas, así
+    # que lo que identifica el archivo es el nombre que llega, no la dirección.
+    assert descarga.value.suggested_filename == "Axioma.apk"

@@ -18,6 +18,11 @@ const APARTADOS = [
   { clave: "bases",        icono: "01", titulo: "Bases" },
 ];
 
+//: La aplicación de Android, adjunta a la última versión publicada. Es la
+//: salida para los navegadores que no ofrecen instalación automática.
+const ENLACE_APK =
+  "https://github.com/erlanders177/Axioma/releases/latest/download/Axioma.apk";
+
 const estado = {
   py: null,
   puente: null,
@@ -712,17 +717,16 @@ function prepararTema() {
  */
 function prepararInstalacion() {
   const boton = $("#btn-instalar");
-  let peticion = null;
 
-  window.addEventListener("beforeinstallprompt", (evento) => {
-    evento.preventDefault();
-    peticion = evento;
-    boton.hidden = false;
-  });
+  // El aviso lo recoge un script del propio index.html, que corre antes que
+  // nada: cuando esta función se ejecuta ya se ha cargado el motor de cálculo
+  // y el navegador hace rato que avisó. Aquí sólo se recupera.
+  const peticion = () => window.__peticionInstalacion;
+  document.addEventListener("axioma:instalable", () => { boton.hidden = false; });
 
   window.addEventListener("appinstalled", () => {
     boton.hidden = true;
-    peticion = null;
+    window.__peticionInstalacion = null;
   });
 
   const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -737,11 +741,25 @@ function prepararInstalacion() {
   boton.hidden = yaInstalada;
 
   boton.onclick = async () => {
-    if (peticion) {
-      peticion.prompt();
-      const { outcome } = await peticion.userChoice;
+    const guardada = peticion();
+    if (guardada) {
+      // Esto es lo que abre el cuadro del sistema: «¿Instalar Axioma?».
+      guardada.prompt();
+      const { outcome } = await guardada.userChoice;
       if (outcome === "accepted") boton.hidden = true;
-      peticion = null;
+      window.__peticionInstalacion = null;
+      return;
+    }
+
+    // Sin aviso del navegador no hay instalación de un toque. Antes de mandar
+    // al usuario a rebuscar por los menús, se le ofrece el APK, que es
+    // justamente «pulsar y que se descargue».
+    if (!esIOS && confirm(
+        "Este navegador no ofrece la instalación automática.\n\n" +
+        "¿Descargar la aplicación (APK) para instalarla directamente?\n\n" +
+        "Si prefiere el otro camino, cancele y le indico dónde está la opción " +
+        "en el menú del navegador.")) {
+      window.location.href = ENLACE_APK;
       return;
     }
     alert(

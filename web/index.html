@@ -16,6 +16,20 @@
 <meta name="apple-mobile-web-app-title" content="Axioma">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="estilo.css">
+
+<!-- Lo primero de todo, antes de cargar nada más.
+     El navegador avisa con `beforeinstallprompt` en cuanto decide que la página
+     se puede instalar, y eso ocurre nada más cargarla. Si se espera a que el
+     motor de cálculo esté listo —varios segundos— el aviso ya ha pasado y se
+     pierde la única oportunidad de instalar con un toque. -->
+<script>
+  window.__peticionInstalacion = null;
+  window.addEventListener("beforeinstallprompt", function (evento) {
+    evento.preventDefault();
+    window.__peticionInstalacion = evento;
+    document.dispatchEvent(new Event("axioma:instalable"));
+  });
+</script>
 </head>
 <body>
 
