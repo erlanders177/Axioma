@@ -396,6 +396,17 @@ def test_la_pagina_dice_de_que_va_sin_ejecutar_javascript():
     assert datos["name"] == "Axioma"
 
 
+def test_sigue_estando_la_verificacion_de_google():
+    """Si se borra, la propiedad deja de estar verificada en Search Console.
+
+    Es una etiqueta suelta en la cabecera, de las que se pierden sin ruido al
+    reordenar el HTML, y nadie se entera hasta que hace falta.
+    """
+    bruto = (WEB / "index.html").read_text(encoding="utf-8")
+    assert 'name="google-site-verification"' in bruto
+    assert "75aCGIQ9zULCkgtBxh_g88g5E-TI-aBYwJNGNQMh63k" in bruto
+
+
 def test_hay_robots_y_sitemap():
     robots = (WEB / "robots.txt").read_text(encoding="utf-8")
     assert "Sitemap:" in robots and "Allow: /" in robots
