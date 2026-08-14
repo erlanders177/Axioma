@@ -47,7 +47,26 @@ jobs:
           QT_QPA_PLATFORM: offscreen
           # El entorno de CI puede traer plugins de pytest ajenos al proyecto.
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -q --ignore=tests/test_web.py
+
+  web:
+    name: Versión web (navegador real)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest playwright
+          python -m playwright install --with-deps chromium
+      - name: Probar en móvil y en escritorio
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: python -m pytest tests/test_web.py -q
 
   estilo:
     name: Estilo del código
@@ -60,4 +79,4 @@ jobs:
           cache: pip
       - run: pip install pyflakes
       - name: Buscar imports sin usar y nombres indefinidos
-        run: python -m pyflakes src main.py tests tools
+        run: python -m pyflakes src main.py tests tools web/puente.py

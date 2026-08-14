@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Axioma — calculadora científica multifunción, en el navegador y sin conexión.">
+<meta name="theme-color" content="#11151f">
+<title>Axioma</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono.svg" type="image/svg+xml">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<header class="cabecera">
+  <div class="marca">
+    <b>Axioma</b>
+    <span class="version" id="version">calculadora científica</span>
+  </div>
+  <div class="acciones">
+    <button id="btn-tema" class="plano" title="Cambiar entre tema claro y oscuro">◐</button>
+  </div>
+</header>
+
+<!-- Menú de apartados: barra lateral en el ordenador, pestañas abajo en el móvil -->
+<nav class="menu" id="menu" aria-label="Apartados"></nav>
+
+<main class="lienzo" id="lienzo"></main>
+
+<div class="barra" id="barra">
+  <span class="simbolo">ƒ</span>
+  <input id="barra-entrada" inputmode="text" autocomplete="off" autocapitalize="off"
+         spellcheck="false" placeholder="Cuenta rápida:  5*sin(30)  ·  h = 2*pi*r  ·  3 km + 200 m">
+  <output id="barra-resultado"></output>
+  <button id="btn-variables" class="plano" title="Ver y borrar las variables definidas">x=</button>
+</div>
+
+<div class="cargando" id="cargando">
+  <div class="tarjeta-carga">
+    <b>Axioma</b>
+    <p id="estado-carga">Preparando el motor de cálculo…</p>
+    <div class="progreso"><i id="barra-progreso"></i></div>
+    <small>La primera vez tarda unos segundos: se descarga Python entero.
+      Después funciona sin conexión.</small>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

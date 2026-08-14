@@ -117,3 +117,39 @@ print("OK")
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))
+
+
+# --------------------------------------------------------------------------- #
+# La versión web lleva una copia del núcleo: no puede quedarse vieja
+# --------------------------------------------------------------------------- #
+
+def test_el_nucleo_de_la_web_esta_al_dia():
+    """`web/nucleo.json` debe coincidir con `src/core`.
+
+    La web ejecuta el mismo núcleo que el escritorio, pero copiado en un JSON
+    que se genera a mano con `python tools/preparar_web.py`. Sin esta prueba,
+    un arreglo en el núcleo saldría en Windows y no en el móvil, que es la peor
+    clase de fallo: dos calculadoras que no dan lo mismo.
+    """
+    import json
+    import sys
+
+    raiz = Path(__file__).resolve().parent.parent
+    sys.path.insert(0, str(raiz))
+    from tools.preparar_web import recopilar
+
+    archivo = raiz / "web" / "nucleo.json"
+    assert archivo.exists(), "falta web/nucleo.json: ejecute python tools/preparar_web.py"
+
+    guardado = json.loads(archivo.read_text(encoding="utf-8"))
+    actual = recopilar()
+
+    faltan = sorted(set(actual) - set(guardado))
+    sobran = sorted(set(guardado) - set(actual))
+    distintos = sorted(n for n in set(actual) & set(guardado) if actual[n] != guardado[n])
+
+    assert not (faltan or sobran or distintos), (
+        "web/nucleo.json no coincide con el código: ejecute "
+        "«python tools/preparar_web.py».\n"
+        f"  faltan: {faltan}\n  sobran: {sobran}\n  distintos: {distintos}"
+    )

@@ -4,9 +4,9 @@
 
 # Axioma
 
-**Calculadora científica multifunción de escritorio.**
+**Calculadora científica multifunción.**
 Dieciséis apartados en una sola pantalla, abiertos a la vez, en español y
-sin conexión a internet.
+sin conexión a internet. En Windows y **en el navegador del móvil**.
 
 [![tests](https://github.com/erlanders177/Axioma/actions/workflows/tests.yml/badge.svg)](https://github.com/erlanders177/Axioma/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
@@ -107,6 +107,38 @@ punto y comprobando el resultado al final.
       x = (5 ± √1) / 2
 6. Comprobación
       0 = 0, correcto
+```
+
+---
+
+## En el móvil y en el navegador
+
+**[Abrir Axioma en el navegador →](https://erlanders177.github.io/Axioma/)**
+
+Funciona en el móvil y en el ordenador, sin instalar nada. En el teléfono, el
+menú del navegador ofrece «Añadir a la pantalla de inicio» y queda como una
+aplicación más.
+
+La primera visita descarga Python entero (unos segundos); a partir de ahí
+**funciona sin conexión**. No es una reescritura: dentro del navegador corre el
+mismo `src/core` que la versión de escritorio, con
+[Pyodide](https://pyodide.org/), así que los resultados son los mismos por
+construcción.
+
+<table>
+<tr>
+<td width="38%"><img src="docs/capturas/web_movil.png" alt="Axioma en un móvil"><br><sub><b>Móvil</b> — un apartado cada vez, menú abajo</sub></td>
+<td width="62%"><img src="docs/capturas/web_escritorio.png" alt="Axioma en el navegador de un ordenador"><br><sub><b>Ordenador</b> — varios apartados a la vez</sub></td>
+</tr>
+</table>
+
+En la web hay siete apartados: calculadora, conversiones, geometría, ecuaciones,
+cálculo, combinatoria y bases. Los otros nueve, de momento, sólo en la
+aplicación de escritorio.
+
+```bash
+python tools/preparar_web.py            # empaqueta src/core para el navegador
+python -m http.server -d web            # y se abre http://localhost:8000
 ```
 
 ---
@@ -221,7 +253,15 @@ Axioma/
 ├── assets/                     icono de la aplicación
 ├── tools/
 │   ├── generar_icono.py        regenera el icono de forma reproducible
+│   ├── preparar_web.py         empaqueta src/core para el navegador
 │   └── crear_acceso_directo.py acceso directo en el escritorio
+├── web/                        la misma calculadora en el navegador
+│   ├── index.html
+│   ├── app.js                  interfaz; no calcula nada
+│   ├── estilo.css              adaptable: móvil y ordenador
+│   ├── puente.py               traduce entre el núcleo y la interfaz
+│   ├── nucleo.json             copia de src/core (generada)
+│   └── sw.js                   caché para funcionar sin conexión
 ├── docs/
 │   ├── manual_usuario.html     manual (F1 desde la aplicación)
 │   └── capturas/
@@ -277,7 +317,7 @@ pip install pytest
 python -m pytest tests/ -q
 ```
 
-502 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
+523 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
 unidades, las 61 figuras contra resultados conocidos, entradas maliciosas
 bloqueadas en el evaluador, resultados de libro comprobados (la serie de Fourier
 de x, la precisión relativa de Euler frente a Runge-Kutta) y los dieciséis

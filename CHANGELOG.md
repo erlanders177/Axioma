@@ -4,6 +4,51 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ---
 
+## 4.0.0
+
+Axioma sale del escritorio: ahora también funciona en el móvil.
+
+### La misma calculadora, en el navegador
+
+Hay una versión web en `web/`, que corre **el mismo núcleo Python** que la de
+escritorio. No es una reescritura en JavaScript: Pyodide es Python compilado a
+WebAssembly, así que `src/core` se copia dentro del navegador y allí se ejecuta.
+Un cilindro de radio `5 cm` y altura `50 mm` da 392.699 cm³ en los dos sitios,
+por construcción y no por casualidad.
+
+- **Se adapta a la pantalla.** En un teléfono se ve un apartado cada vez, con el
+  menú abajo al alcance del pulgar; en un ordenador, varios en columnas y el
+  menú al lado, como en la aplicación de escritorio.
+- **Funciona sin conexión.** La primera visita descarga Python; a partir de ahí
+  todo sale de la caché. Probado apagando el servidor: sigue calculando.
+- **Se instala.** Desde el navegador, «añadir a la pantalla de inicio»: queda
+  como una aplicación más, sin tiendas de por medio.
+- **Arranca en unos 4 segundos**, porque sympy sólo se descarga cuando se abre
+  Ecuaciones o Cálculo. La calculadora, las conversiones, la geometría, la
+  combinatoria y las bases no lo necesitan.
+
+Siete apartados de momento: calculadora, conversiones, geometría, ecuaciones,
+cálculo, combinatoria y bases. Los otros nueve siguen siendo cosa del
+escritorio.
+
+### Cómo se sostiene
+
+- `tools/preparar_web.py` empaqueta `src/core` como paquete, sin tocar una línea
+  ni aplanar sus importaciones.
+- `web/puente.py` traduce entre el núcleo y la interfaz. No calcula nada: si hay
+  algo que resolver, lo resuelve el núcleo.
+- **20 pruebas en un Chromium de verdad**, en móvil y en escritorio, que
+  comprueban que los resultados coinciden con los del escritorio.
+- Una prueba más impide que `web/nucleo.json` se quede desfasado del núcleo: sin
+  ella, un arreglo saldría en Windows y no en el móvil, que es la peor clase de
+  fallo.
+
+### Otros cambios
+
+- La versión web se publica sola en GitHub Pages al tocar `web/` o `src/core`.
+
+---
+
 ## 3.5.0
 
 Lo que sale en un apartado se usa en los demás, y el sitio se reparte a mano.

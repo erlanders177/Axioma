@@ -1,0 +1,364 @@
+/* Axioma web — la misma aplicación en el móvil y en el ordenador.
+ *
+ * La diferencia no es de adorno, es de sitio: en un teléfono cabe un apartado
+ * cada vez y el menú va abajo, al alcance del pulgar; en un ordenador caben
+ * varios en columnas, como en la versión de escritorio.
+ */
+
+:root {
+  --fondo: #0d1117;
+  --panel: #161b26;
+  --panel-alto: #1d2432;
+  --borde: #273041;
+  --texto: #e6edf3;
+  --suave: #8b98ac;
+  --acento: #4a9eff;
+  --acento-tenue: #1e3a5f;
+  --error: #ff6b6b;
+  --ok: #3fb950;
+  --radio: 12px;
+  --menu-alto: 62px;
+  --barra-alto: 58px;
+}
+
+:root[data-tema="claro"] {
+  --fondo: #f4f6fa;
+  --panel: #ffffff;
+  --panel-alto: #eef1f7;
+  --borde: #d6dce7;
+  --texto: #1a2030;
+  --suave: #5c6880;
+  --acento: #1667d6;
+  --acento-tenue: #dbe8fb;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--fondo);
+  color: var(--texto);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  grid-template-areas: "cabecera" "lienzo" "barra" "menu";
+  height: 100dvh;
+}
+
+/* ------------------------------------------------------------- cabecera -- */
+
+.cabecera {
+  grid-area: cabecera;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  padding-top: max(10px, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--borde);
+  background: var(--panel);
+}
+.marca b { font-size: 18px; letter-spacing: .5px; }
+.marca .version { color: var(--suave); font-size: 12px; margin-left: 8px; }
+
+/* ---------------------------------------------------------------- menú -- */
+
+.menu {
+  grid-area: menu;
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-top: 1px solid var(--borde);
+  background: var(--panel);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.menu::-webkit-scrollbar { display: none; }
+
+.menu button {
+  flex: 1 0 auto;
+  min-width: 72px;
+  min-height: var(--menu-alto);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 10px;
+  border: 0;
+  background: none;
+  color: var(--suave);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.menu button .icono { font-size: 19px; line-height: 1; }
+.menu button[aria-pressed="true"] { color: var(--acento); }
+.menu button[aria-pressed="true"] .icono { transform: translateY(-1px); }
+
+/* -------------------------------------------------------------- lienzo -- */
+
+.lienzo {
+  grid-area: lienzo;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.apartado {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 14px;
+  min-width: 0;
+}
+.apartado > h2 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--suave);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.apartado.oculto { display: none; }
+
+/* -------------------------------------------------------------- campos -- */
+
+label { display: block; font-size: 12px; color: var(--suave); margin: 10px 0 4px; }
+
+input, select, button.accion {
+  width: 100%;
+  min-height: 44px;              /* el mínimo cómodo para un dedo */
+  padding: 10px 12px;
+  border: 1px solid var(--borde);
+  border-radius: 9px;
+  background: var(--panel-alto);
+  color: var(--texto);
+  font: inherit;
+  font-size: 16px;               /* menos de 16px hace que iOS haga zoom al enfocar */
+}
+input:focus, select:focus { outline: 2px solid var(--acento); outline-offset: -1px; }
+
+button.accion {
+  background: var(--acento);
+  border-color: var(--acento);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+button.accion.secundaria {
+  background: var(--panel-alto);
+  border-color: var(--borde);
+  color: var(--texto);
+  font-weight: 500;
+}
+button.plano {
+  background: none;
+  border: 1px solid var(--borde);
+  border-radius: 9px;
+  color: var(--texto);
+  min-height: 40px;
+  min-width: 44px;
+  padding: 0 10px;
+  font: inherit;
+  cursor: pointer;
+}
+.fila { display: flex; gap: 8px; margin-top: 12px; }
+.fila > * { flex: 1; }
+
+/* ------------------------------------------------------------ pantalla -- */
+
+.pantalla {
+  background: var(--panel-alto);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-align: right;
+}
+.pantalla input {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 30px;
+  text-align: right;
+  min-height: 40px;
+}
+.pantalla input:focus { outline: none; }
+.pantalla .previa { color: var(--suave); font-size: 15px; min-height: 20px; }
+
+.teclado {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 7px;
+  margin-top: 12px;
+}
+.teclado button {
+  min-height: 52px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: var(--panel-alto);
+  color: var(--texto);
+  font: inherit;
+  font-size: 17px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.teclado button:active { background: var(--acento-tenue); }
+.teclado button.op { color: var(--acento); font-weight: 600; }
+.teclado button.igual { background: var(--acento); border-color: var(--acento); color: #fff; }
+.teclado button.fn { font-size: 14px; color: var(--suave); }
+
+/* ---------------------------------------------------------- resultados -- */
+
+.resultados { margin-top: 12px; }
+.resultados .fila-res {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--borde);
+  cursor: pointer;
+}
+.resultados .fila-res:last-child { border-bottom: 0; }
+.resultados .fila-res:active { background: var(--panel-alto); }
+.resultados .etiqueta { color: var(--suave); }
+.resultados .valor { font-family: ui-monospace, Consolas, monospace; text-align: right; }
+.pista { color: var(--suave); font-size: 12px; margin-top: 8px; }
+
+.salida {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--panel-alto);
+  border-radius: 10px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+.error { color: var(--error); }
+
+/* -------------------------------------------------------------- barra -- */
+
+.barra {
+  grid-area: barra;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--borde);
+  background: var(--panel);
+  min-height: var(--barra-alto);
+}
+.barra .simbolo { color: var(--acento); font-size: 17px; }
+.barra input { flex: 1; min-height: 40px; }
+.barra output {
+  font-family: ui-monospace, Consolas, monospace;
+  color: var(--acento);
+  white-space: nowrap;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------------- carga -- */
+
+.cargando {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--fondo);
+  z-index: 50;
+}
+.cargando.listo { display: none; }
+.tarjeta-carga {
+  max-width: 320px;
+  padding: 26px;
+  text-align: center;
+}
+.tarjeta-carga b { font-size: 26px; letter-spacing: 1px; }
+.tarjeta-carga p { color: var(--suave); margin: 14px 0 10px; }
+.tarjeta-carga small { color: var(--suave); font-size: 11.5px; display: block; margin-top: 12px; }
+.progreso { height: 4px; background: var(--panel-alto); border-radius: 2px; overflow: hidden; }
+.progreso i { display: block; height: 100%; width: 10%; background: var(--acento); transition: width .3s; }
+
+/* ------------------------------------------------------- historial -- */
+
+.historial { margin-top: 14px; border-top: 1px solid var(--borde); padding-top: 10px; }
+.historial h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--suave);
+  font-weight: 500;
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.historial ul { list-style: none; margin: 0; padding: 0; max-height: 150px; overflow: auto; }
+.historial li {
+  padding: 7px 2px;
+  border-bottom: 1px solid var(--borde);
+  font-size: 13px;
+  font-family: ui-monospace, Consolas, monospace;
+  color: var(--suave);
+  cursor: pointer;
+  word-break: break-word;
+}
+.historial.plegado ul { display: none; }
+
+/* ==========================================================================
+   Ordenador: caben varios apartados a la vez y el menú se va al lateral.
+   ========================================================================== */
+
+@media (min-width: 860px) {
+  body {
+    grid-template-columns: 210px 1fr;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+      "cabecera cabecera"
+      "menu     lienzo"
+      "menu     barra";
+  }
+  .menu {
+    flex-direction: column;
+    gap: 0;
+    overflow-y: auto;
+    border-top: 0;
+    border-right: 1px solid var(--borde);
+    padding: 8px;
+  }
+  .menu button {
+    flex: 0 0 auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 10px;
+    min-height: 42px;
+    min-width: 0;
+    border-radius: 9px;
+    font-size: 14px;
+  }
+  .menu button[aria-pressed="true"] { background: var(--acento-tenue); color: var(--acento); }
+  .menu button .icono { font-size: 16px; width: 20px; text-align: center; }
+
+  .lienzo {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(340px, 1fr);
+    overflow-x: auto;
+    padding: 14px;
+  }
+  .apartado { overflow: auto; }
+  .barra { padding: 10px 14px; }
+}

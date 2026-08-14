@@ -1,0 +1,15 @@
+{
+  "name": "Axioma — calculadora científica",
+  "short_name": "Axioma",
+  "description": "Calculadora científica multifunción: unidades, geometría, ecuaciones y bases. Funciona sin conexión.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d1117",
+  "theme_color": "#11151f",
+  "lang": "es",
+  "icons": [
+    { "src": "icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
