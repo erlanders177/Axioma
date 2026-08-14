@@ -4,6 +4,43 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ---
 
+## 4.1.0
+
+Axioma como aplicación de verdad, no sólo como página.
+
+### Instalable
+
+Un botón **«Instalar»** en la cabecera, visible salvo si ya está instalada. Si
+el navegador ofrece la instalación nativa, la lanza de un toque; si no —Safari
+no la ofrece nunca—, explica dónde está la opción. Se podía instalar desde el
+principio, pero la opción vive escondida en el menú del navegador y no había
+forma de enterarse.
+
+Queda con su icono en la pantalla de inicio, se abre sin barra de direcciones y
+funciona sin conexión.
+
+### APK de Android
+
+Hay un **`Axioma.apk`** adjunto a esta versión, para quien prefiera instalarla
+como cualquier otra aplicación. Pesa 1,2 MB porque no duplica nada: es una
+envoltura fina (Trusted Web Activity) sobre la misma versión web.
+
+- Firmado con una clave estable, así que las actualizaciones se instalan encima
+  en lugar de obligar a desinstalar.
+- `assetlinks.json` publica la huella de esa firma: es lo que le demuestra a
+  Android que el APK y el sitio son de la misma persona, y lo que quita la
+  barra de direcciones.
+- Al no estar en Google Play, Android pedirá permiso para instalar desde el
+  navegador. Es lo normal fuera de la tienda.
+
+### Iconos
+
+Iconos PNG de 192, 512 y *maskable*, más el de iOS, que no lee el manifiesto.
+Se generan con el mismo `tools/generar_icono.py` que el icono de Windows, así
+que la marca es la misma en el escritorio y en el móvil.
+
+---
+
 ## 4.0.0
 
 Axioma sale del escritorio: ahora también funciona en el móvil.

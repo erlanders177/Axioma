@@ -115,9 +115,17 @@ punto y comprobando el resultado al final.
 
 **[Abrir Axioma en el navegador →](https://erlanders177.github.io/Axioma/)**
 
-Funciona en el móvil y en el ordenador, sin instalar nada. En el teléfono, el
-menú del navegador ofrece «Añadir a la pantalla de inicio» y queda como una
-aplicación más.
+Funciona en el móvil y en el ordenador, sin instalar nada.
+
+**Y se puede instalar como aplicación**, de dos maneras:
+
+- **Desde la propia página**: el botón «Instalar» de la cabecera. Queda con su
+  icono en la pantalla de inicio, se abre sin barra de direcciones y funciona
+  sin conexión. Sirve en Android, en iPhone y en el escritorio.
+- **Con el APK**: `Axioma.apk` está en la
+  [última versión](https://github.com/erlanders177/Axioma/releases/latest).
+  Pesa 1,2 MB porque no duplica nada, es una envoltura sobre la misma web.
+  Al no venir de Google Play, Android pedirá permiso para instalarlo.
 
 La primera visita descarga Python entero (unos segundos); a partir de ahí
 **funciona sin conexión**. No es una reescritura: dentro del navegador corre el
