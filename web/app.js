@@ -150,6 +150,7 @@ function montar() {
   refrescarMenu();
   prepararBarra();
   prepararTema();
+  prepararInstalacion();
   $("#version").textContent = "calculadora científica · web";
 }
 
@@ -697,6 +698,71 @@ function prepararTema() {
     const nuevo = document.documentElement.dataset.tema === "claro" ? "oscuro" : "claro";
     document.documentElement.dataset.tema = nuevo;
     localStorage.setItem("axioma:tema", nuevo);
+  };
+}
+
+/* ------------------------------------------------------------ instalar -- */
+
+/** Deja Axioma instalado como una aplicación más del teléfono o del escritorio.
+ *
+ * Android y el escritorio avisan con `beforeinstallprompt` cuando el sitio
+ * cumple los requisitos, y entonces se puede instalar con un botón. Safari no
+ * implementa nada de eso: allí lo único que cabe es explicar dónde está la
+ * opción, porque el usuario no tiene por qué saberlo.
+ */
+function prepararInstalacion() {
+  const boton = $("#btn-instalar");
+  let peticion = null;
+
+  window.addEventListener("beforeinstallprompt", (evento) => {
+    evento.preventDefault();
+    peticion = evento;
+    boton.hidden = false;
+  });
+
+  window.addEventListener("appinstalled", () => {
+    boton.hidden = true;
+    peticion = null;
+  });
+
+  const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const yaInstalada = window.matchMedia("(display-mode: standalone)").matches ||
+                      window.navigator.standalone === true;
+
+  // El botón se muestra siempre que no esté ya instalada, sin esperar a
+  // `beforeinstallprompt`: ese evento no existe en Safari y varios navegadores
+  // de Android lo retrasan o no lo mandan nunca. Si llega, el botón instala de
+  // un toque; si no llega, explica dónde está la opción. Lo que no puede pasar
+  // es que se pueda instalar y no haya manera de enterarse.
+  boton.hidden = yaInstalada;
+
+  boton.onclick = async () => {
+    if (peticion) {
+      peticion.prompt();
+      const { outcome } = await peticion.userChoice;
+      if (outcome === "accepted") boton.hidden = true;
+      peticion = null;
+      return;
+    }
+    alert(
+      esIOS
+        ? [
+            "Para instalarla en el iPhone:",
+            "",
+            "1. Toque el botón Compartir (el cuadrado con la flecha hacia arriba).",
+            "2. Elija «Añadir a pantalla de inicio».",
+            "",
+            "Quedará como una aplicación más, y funciona sin conexión.",
+          ].join("\n")
+        : [
+            "Para instalarla:",
+            "",
+            "Abra el menú del navegador (los tres puntos) y elija",
+            "«Instalar aplicación» o «Añadir a pantalla de inicio».",
+            "",
+            "Quedará como una aplicación más, y funciona sin conexión.",
+          ].join("\n")
+    );
   };
 }
 

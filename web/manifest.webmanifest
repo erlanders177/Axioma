@@ -1,15 +1,22 @@
 {
   "name": "Axioma — calculadora científica",
   "short_name": "Axioma",
-  "description": "Calculadora científica multifunción: unidades, geometría, ecuaciones y bases. Funciona sin conexión.",
+  "description": "Calculadora científica multifunción: unidades, geometría, ecuaciones, cálculo y bases. Funciona sin conexión.",
+  "id": "/Axioma/",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
   "background_color": "#0d1117",
   "theme_color": "#11151f",
   "lang": "es",
+  "dir": "ltr",
+  "categories": ["education", "productivity", "utilities"],
   "icons": [
-    { "src": "icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

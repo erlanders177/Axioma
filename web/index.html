@@ -8,6 +8,13 @@
 <title>Axioma</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!-- Safari no lee el manifiesto: sin esto, al añadir a la pantalla de inicio
+     se abriría dentro del navegador y con barra de direcciones. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Axioma">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="estilo.css">
 </head>
 <body>
@@ -18,6 +25,7 @@
     <span class="version" id="version">calculadora científica</span>
   </div>
   <div class="acciones">
+    <button id="btn-instalar" class="plano destacado" hidden>Instalar</button>
     <button id="btn-tema" class="plano" title="Cambiar entre tema claro y oscuro">◐</button>
   </div>
 </header>

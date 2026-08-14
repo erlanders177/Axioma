@@ -175,6 +175,13 @@ button.plano {
   font: inherit;
   cursor: pointer;
 }
+button.plano.destacado {
+  background: var(--acento);
+  border-color: var(--acento);
+  color: #fff;
+  font-weight: 600;
+}
+.acciones { display: flex; gap: 8px; align-items: center; }
 .fila { display: flex; gap: 8px; margin-top: 12px; }
 .fila > * { flex: 1; }
 

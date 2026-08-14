@@ -6,8 +6,10 @@ ejecutarlo.
 
     python tools/generar_icono.py
 
-Produce ``assets/axioma.ico`` (con los tamaños que pide Windows) y
-``assets/axioma.png`` (256 px, para el README o la web).
+Produce ``assets/axioma.ico`` (con los tamaños que pide Windows),
+``assets/axioma.png`` (256 px, para el README) y los iconos de la versión web
+en ``web/``, que son los que hacen que el móvil la ofrezca **como aplicación**
+y no como un simple acceso directo.
 """
 
 from __future__ import annotations
@@ -29,6 +31,17 @@ DESTINO = RAIZ / "assets"
 
 #: Tamaños que Windows espera dentro de un .ico.
 TAMANOS = [16, 24, 32, 48, 64, 128, 256]
+
+#: Android sólo ofrece «Instalar aplicación» si el manifiesto trae iconos PNG
+#: de 192 y 512; con un SVG se conforma con un acceso directo. iOS usa el suyo,
+#: de 180, y no lee el manifiesto.
+WEB = RAIZ / "web"
+TAMANOS_WEB = {"icono-192.png": 192, "icono-512.png": 512, "apple-touch-icon.png": 180}
+
+#: En un icono «maskable» el sistema recorta la forma que quiera (círculo,
+#: cuadrado, gota), así que el dibujo tiene que caber en el 80 % central y el
+#: fondo llegar hasta el borde.
+ZONA_SEGURA = 0.8
 
 
 def _rectangulo_redondeado(dibujo: ImageDraw.ImageDraw, radio: int) -> None:
@@ -103,6 +116,17 @@ def construir() -> Image.Image:
     return imagen
 
 
+def construir_maskable() -> Image.Image:
+    """El mismo icono, pero preparado para que el sistema lo recorte."""
+    fondo = Image.new("RGBA", (LIENZO, LIENZO), FONDO)
+    motivo = construir().resize(
+        (int(LIENZO * ZONA_SEGURA), int(LIENZO * ZONA_SEGURA)), Image.LANCZOS
+    )
+    margen = (LIENZO - motivo.width) // 2
+    fondo.paste(motivo, (margen, margen), motivo)
+    return fondo
+
+
 def main() -> None:
     DESTINO.mkdir(parents=True, exist_ok=True)
     imagen = construir()
@@ -115,6 +139,15 @@ def main() -> None:
 
     print(f"escrito {png.relative_to(RAIZ)}")
     print(f"escrito {ico.relative_to(RAIZ)}  ({len(TAMANOS)} tamaños)")
+
+    if WEB.exists():
+        for nombre, lado in TAMANOS_WEB.items():
+            ruta = WEB / nombre
+            imagen.resize((lado, lado), Image.LANCZOS).save(ruta)
+            print(f"escrito {ruta.relative_to(RAIZ)}")
+        ruta = WEB / "icono-maskable-512.png"
+        construir_maskable().resize((512, 512), Image.LANCZOS).save(ruta)
+        print(f"escrito {ruta.relative_to(RAIZ)}")
 
 
 if __name__ == "__main__":
