@@ -70,7 +70,18 @@ jobs:
           FIN
           cat "$HOME/.bubblewrap/config.json"
 
-          # Sin stdin no hay pregunta que pueda quedarse esperando.
+          # Bubblewrap da por inválido cualquier SDK sin una carpeta `tools` o
+          # `bin` en la raíz. El del runner es moderno y las trae dentro de
+          # `cmdline-tools`, así que se le pone el enlace que espera encontrar.
+          if [ ! -e "$ANDROID_SDK_ROOT/tools" ] && [ ! -e "$ANDROID_SDK_ROOT/bin" ]; then
+            ln -s "$ANDROID_SDK_ROOT/cmdline-tools/latest" "$ANDROID_SDK_ROOT/tools"
+          fi
+          ls "$ANDROID_SDK_ROOT"
+
+          # `build` compila un proyecto Android que aún no existe: `update` lo
+          # genera a partir de twa-manifest.json. Sin stdin, para que ninguna
+          # pregunta pueda quedarse esperando.
+          bubblewrap update --skipVersionUpgrade < /dev/null
           bubblewrap build --skipPwaValidation \
             --signingKeyPath "$RUNNER_TEMP/axioma.keystore" \
             --signingKeyAlias axioma < /dev/null
