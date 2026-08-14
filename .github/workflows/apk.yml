@@ -57,12 +57,23 @@ jobs:
         run: |
           cp "$GITHUB_WORKSPACE/web/twa-manifest.json" .
           npm install -g @bubblewrap/cli@1.25.0
-          # Bubblewrap pregunta por la ruta del SDK y del JDK si no las ve; así
-          # usa las que ya trae el runner en vez de descargarse otras.
-          bubblewrap updateConfig --jdkPath "$JAVA_HOME" --androidSdkPath "$ANDROID_SDK_ROOT"
+
+          # Su configuración se escribe a mano. Con `updateConfig` no basta:
+          # antes de leer nada pregunta por teclado si quiere descargarse un
+          # JDK, y en CI eso corta el trabajo. El runner ya trae los dos.
+          mkdir -p "$HOME/.bubblewrap"
+          cat > "$HOME/.bubblewrap/config.json" <<FIN
+          {
+            "jdkPath": "$JAVA_HOME",
+            "androidSdkPath": "$ANDROID_SDK_ROOT"
+          }
+          FIN
+          cat "$HOME/.bubblewrap/config.json"
+
+          # Sin stdin no hay pregunta que pueda quedarse esperando.
           bubblewrap build --skipPwaValidation \
             --signingKeyPath "$RUNNER_TEMP/axioma.keystore" \
-            --signingKeyAlias axioma
+            --signingKeyAlias axioma < /dev/null
 
       - name: Renombrar el resultado
         working-directory: ${{ runner.temp }}
