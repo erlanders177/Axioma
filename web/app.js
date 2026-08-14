@@ -45,7 +45,24 @@ async function arrancar() {
     progreso.style.width = porcentaje + "%";
   };
 
+  // Un aviso si tarda: en una conexión lenta son varios megas y una pantalla
+  // quieta se confunde con una que no funciona.
+  const lento = setTimeout(() => {
+    const nota = document.createElement("p");
+    nota.className = "pista";
+    nota.textContent = "Está tardando más de lo normal. Son unos 15 MB la " +
+      "primera vez; con mala cobertura puede llevar un par de minutos.";
+    $("#estado-carga").after(nota);
+  }, 25000);
+
   try {
+    if (typeof loadPyodide !== "function") {
+      throw new Error(
+        "no se pudo descargar el motor de Python. Compruebe la conexión, y " +
+        "si está en una red con filtros (trabajo, universidad) pruebe con los " +
+        "datos del móvil: se descarga de cdn.jsdelivr.net."
+      );
+    }
     paso("Descargando Python…", 20);
     estado.py = await loadPyodide();
 
@@ -82,12 +99,19 @@ def _despachar(nombre, *args):
     }
 
     paso("Listo", 100);
+    clearTimeout(lento);
     $("#cargando").classList.add("listo");
     montar();
   } catch (e) {
+    clearTimeout(lento);
     estadoCarga.innerHTML =
       '<span class="error">No se pudo arrancar: ' + e.message + "</span>";
     progreso.style.width = "100%";
+    const reintentar = document.createElement("button");
+    reintentar.className = "accion";
+    reintentar.textContent = "Reintentar";
+    reintentar.onclick = () => location.reload();
+    estadoCarga.after(reintentar);
   }
 }
 

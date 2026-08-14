@@ -45,7 +45,10 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js"></script>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js"
+        onerror="document.getElementById('estado-carga').innerHTML =
+          '<span class=&quot;error&quot;>No se pudo descargar el motor de Python. ' +
+          'Compruebe la conexión y vuelva a cargar la página.</span>'"></script>
 <script src="app.js"></script>
 </body>
 </html>
