@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.erlanders177.axioma",
+      "sha256_cert_fingerprints": [
+        "D0:CC:14:34:F3:BE:8F:65:60:64:F4:4A:32:F4:15:74:DA:00:26:C7:5A:01:99:EA:DE:31:96:A4:EC:74:F3:C0"
+      ]
+    }
+  }
+]

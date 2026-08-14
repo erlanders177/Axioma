@@ -1,0 +1,85 @@
+# Genera el APK de Android e lo adjunta a la versión publicada.
+#
+# El APK es una envoltura fina (Trusted Web Activity) sobre la misma versión
+# web: no hay una tercera implementación de la calculadora, sólo un icono en el
+# cajón de aplicaciones que abre Axioma a pantalla completa, sin barra de
+# direcciones y funcionando sin conexión.
+#
+# Se compila aquí y no en el portátil porque el runner ya trae el JDK y el SDK
+# de Android; instalarlos en local serían un par de gigas para el mismo APK.
+
+name: apk
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      etiqueta:
+        description: "Etiqueta de la versión a la que adjuntar el APK"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Preparar la clave de firma
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "Falta el secreto ANDROID_KEYSTORE: sin él no se puede firmar." >&2
+            exit 1
+          fi
+          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/axioma.keystore"
+
+      - name: Construir el APK
+        working-directory: ${{ runner.temp }}
+        env:
+          CLAVE: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          cp "$GITHUB_WORKSPACE/web/twa-manifest.json" .
+          npm install -g @bubblewrap/cli@1.25.0
+          # Bubblewrap pregunta por la ruta del SDK y del JDK si no los ve; con
+          # estas variables usa los que ya trae el runner.
+          bubblewrap updateConfig --jdkPath "$JAVA_HOME" --androidSdkPath "$ANDROID_HOME"
+          bubblewrap build --skipPwaValidation \
+            --signingKeyPath "$RUNNER_TEMP/axioma.keystore" \
+            --signingKeyAlias axioma
+        # La contraseña llega por variables que bubblewrap consulta sin pedirla.
+        continue-on-error: false
+
+      - name: Renombrar el resultado
+        working-directory: ${{ runner.temp }}
+        run: |
+          ls -la *.apk *.aab 2>/dev/null || true
+          if [ -f app-release-signed.apk ]; then
+            mv app-release-signed.apk Axioma.apk
+          fi
+          ls -la Axioma.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Axioma-apk
+          path: ${{ runner.temp }}/Axioma.apk
+
+      - name: Adjuntarlo a la versión publicada
+        if: github.event_name == 'release' || inputs.etiqueta != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ETIQUETA: ${{ github.event.release.tag_name || inputs.etiqueta }}
+        run: gh release upload "$ETIQUETA" "$RUNNER_TEMP/Axioma.apk" --clobber
