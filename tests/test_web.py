@@ -233,9 +233,14 @@ def test_firefox_de_android_ofrece_el_apk_y_los_pasos(navegador, servidor):
     assert "Descargar la aplicación (APK)" in dialogo
     assert "Firefox" in dialogo and "tres puntos" in dialogo
 
-    with pagina.expect_download(timeout=30000) as descarga:
-        pagina.click("#dialogo-cuerpo button.accion")
-    assert descarga.value.suggested_filename == "Axioma.apk"
+    # Se intercepta la descarga en vez de bajar el APK de verdad: son megas por
+    # internet en cada ejecución, y lo que se comprueba es a dónde apunta.
+    pedidas = []
+    contexto.route("**/Axioma.apk*", lambda ruta: (
+        pedidas.append(ruta.request.url), ruta.abort()))
+    pagina.click("#dialogo-cuerpo button.accion")
+    pagina.wait_for_timeout(1500)
+    assert pedidas and pedidas[0].endswith("Axioma.apk"), pedidas
     contexto.close()
 
 
@@ -271,3 +276,81 @@ def test_firefox_real_muestra_el_dialogo(playwright, servidor):
     assert pagina.is_visible("#dialogo-instalar")
     assert pagina.text_content("#dialogo-instalar").strip()
     navegador.close()
+
+
+# --------------------------------------------------------------------------- #
+# Que una versión nueva llegue de verdad
+# --------------------------------------------------------------------------- #
+
+def _marcar_versiones_en(carpeta: pathlib.Path) -> None:
+    """Repite sobre una copia lo que hace tools/preparar_web.py al publicar."""
+    import hashlib
+    import re
+
+    indice = carpeta / "index.html"
+    texto = indice.read_text(encoding="utf-8")
+    for nombre in ("app.js", "estilo.css"):
+        huella = hashlib.sha256((carpeta / nombre).read_bytes()).hexdigest()[:10]
+        patron = re.compile(r'((?:src|href)=")' + re.escape(nombre)
+                            + r'(?:\?v=[0-9a-f]+)?(")')
+        texto = patron.sub(rf'\g<1>{nombre}?v={huella}\g<2>', texto)
+    indice.write_text(texto, encoding="utf-8")
+
+
+def test_una_version_nueva_llega_al_navegador(playwright, tmp_path_factory):
+    """Publicar un arreglo no sirve de nada si el móvil sigue con lo viejo.
+
+    Es lo que pasaba: el service worker servía la copia guardada de todo, HTML
+    y JavaScript incluidos, así que la aplicación se quedaba congelada en la
+    primera versión visitada por muchas veces que se recargara.
+    """
+    import shutil
+
+    copia = tmp_path_factory.mktemp("web")
+    shutil.copytree(WEB, copia / "web")
+    servida = copia / "web"
+
+    puerto = _puerto_libre()
+    proceso = subprocess.Popen(
+        [sys.executable, "-m", "http.server", str(puerto), "-d", str(servida)],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    time.sleep(1.5)
+    url = f"http://127.0.0.1:{puerto}/"
+    navegador = playwright.chromium.launch()
+    try:
+        contexto = navegador.new_context(viewport={"width": 390, "height": 844})
+        pagina = contexto.new_page()
+        pagina.goto(url, wait_until="load")
+        pagina.wait_for_selector("#menu-calculadora", timeout=ESPERA)
+        pagina.wait_for_function("navigator.serviceWorker.controller !== null",
+                                 timeout=60000)
+        assert "Calculadora" in pagina.text_content("#menu-calculadora")
+
+        # Se publica una versión nueva mientras el navegador ya tiene la vieja.
+        # Como al publicar de verdad: se cambia el código y se reempaqueta, que
+        # es lo que renueva la huella de la dirección.
+        app = servida / "app.js"
+        app.write_text(
+            app.read_text(encoding="utf-8").replace(
+                'titulo: "Calculadora"', 'titulo: "Calculadora NUEVA"', 1),
+            encoding="utf-8")
+        _marcar_versiones_en(servida)
+
+        pagina.reload(wait_until="load")
+        pagina.wait_for_selector("#menu-calculadora", timeout=ESPERA)
+        assert "NUEVA" in pagina.text_content("#menu-calculadora"), (
+            "el navegador se quedó con la versión anterior"
+        )
+
+        # Y sin conexión sigue funcionando, que es para lo que está la caché.
+        contexto.set_offline(True)
+        pagina2 = contexto.new_page()
+        pagina2.goto(url, wait_until="load")
+        pagina2.wait_for_selector("#menu-calculadora", timeout=ESPERA)
+        pagina2.fill("#calc-entrada", "2+2")
+        pagina2.keyboard.press("Enter")
+        assert pagina2.input_value("#calc-entrada") == "4"
+    finally:
+        navegador.close()
+        proceso.terminate()

@@ -18,6 +18,9 @@ const APARTADOS = [
   { clave: "bases",        icono: "01", titulo: "Bases" },
 ];
 
+//: Se muestra en la cabecera. Debe subir en cada publicación.
+const VERSION = "4.1.2";
+
 //: La aplicación de Android, adjunta a la última versión publicada. Es la
 //: salida para los navegadores que no ofrecen instalación automática.
 const ENLACE_APK =
@@ -75,7 +78,7 @@ async function arrancar() {
     estado.py = await loadPyodide();
 
     paso("Copiando el núcleo de Axioma…", 60);
-    const nucleo = await (await fetch("nucleo.json")).json();
+    const nucleo = await (await fetch("nucleo.json", { cache: "no-cache" })).json();
     const creados = new Set();
     for (const [ruta, codigo] of Object.entries(nucleo)) {
       const carpeta = ruta.includes("/") ? ruta.slice(0, ruta.lastIndexOf("/")) : "";
@@ -159,7 +162,9 @@ function montar() {
   prepararBarra();
   prepararTema();
   prepararInstalacion();
-  $("#version").textContent = "calculadora científica · web";
+  // La versión, a la vista: sin ella no hay forma de saber si el móvil está
+  // usando la copia guardada de hace tres días o la de verdad.
+  $("#version").textContent = "web · v" + VERSION;
 }
 
 function alternar(clave) {
@@ -850,7 +855,23 @@ function abrirDialogoDeInstalacion(dialogo, cuerpo, peticion) {
 }
 
 window.addEventListener("resize", refrescarMenu);
+
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
+  window.addEventListener("load", async () => {
+    const registro = await navigator.serviceWorker.register("sw.js");
+
+    // Si al volver hay una versión nueva, se recarga una vez para entrar en
+    // ella. Sin esto la pestaña se queda con la anterior hasta que el usuario
+    // cierra todas, y desde fuera parece que la aplicación no se actualiza.
+    let recargando = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (recargando) return;
+      recargando = true;
+      location.reload();
+    });
+
+    // Y se comprueba al arrancar, no sólo cuando el navegador quiera.
+    registro.update().catch(() => {});
+  });
 }
 arrancar();

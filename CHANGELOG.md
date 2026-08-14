@@ -4,6 +4,42 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ---
 
+## 4.1.2
+
+Las correcciones llegan al móvil. Antes no llegaban.
+
+### Corregido
+
+**La aplicación se quedaba congelada en la versión de la primera visita.** El
+service worker servía la copia guardada de *todo*, incluidos el HTML y el
+JavaScript, y el nombre de la caché no cambiaba al publicar. El resultado: se
+podían publicar diez correcciones y el teléfono seguía con la de la primera
+vez, por muchas veces que se recargara. Es lo que hacía que el botón de
+instalar «no hiciera nada»: el móvil ni siquiera tenía el botón nuevo.
+
+Tres cosas hacían falta, y con dos no bastaba:
+
+1. **Los archivos de la aplicación se piden a la red primero**, y sólo se tira
+   de la copia guardada si no hay conexión. Lo que no cambia nunca —Pyodide,
+   que lleva la versión en la dirección, y los iconos— se sigue sirviendo de la
+   caché, que para eso está.
+2. **Se piden con `no-store`**, porque si no la petición se resuelve contra la
+   caché HTTP del navegador y vuelve la copia vieja por la puerta de atrás.
+3. **La dirección lleva una huella del contenido** (`app.js?v=a3560153a2`). Sin
+   esto el navegador sirve su propia copia sin llegar a preguntar al service
+   worker, y las dos medidas anteriores no se enteran de nada. La huella la
+   pone `tools/preparar_web.py` al empaquetar.
+
+Además, al detectarse una versión nueva la página se recarga sola una vez, y la
+cabecera muestra qué versión se está usando: sin eso no hay forma de saber si
+el móvil abrió lo de hoy o lo de anteayer.
+
+Una prueba nueva lo vigila: carga la aplicación, publica un cambio, recarga y
+comprueba que se ve lo nuevo — y que sin conexión sigue funcionando. Con el
+comportamiento anterior, falla.
+
+---
+
 ## 4.1.1
 
 Instalarla desde cualquier navegador, no sólo desde Chrome.

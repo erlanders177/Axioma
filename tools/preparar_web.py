@@ -15,8 +15,10 @@ Uso:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import pathlib
+import re
 import sys
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
@@ -46,6 +48,44 @@ def recopilar() -> dict[str, str]:
     return modulos
 
 
+#: Archivos cuya dirección se marca con una huella de su contenido.
+#:
+#: Sin esto, el navegador sirve su propia copia guardada durante minutos y una
+#: corrección publicada no llega: ni siquiera llega a preguntar al service
+#: worker. Al cambiar el contenido cambia la dirección, y entonces no le queda
+#: más remedio que descargarla.
+VERSIONADOS = ("app.js", "estilo.css", "nucleo.json")
+
+
+def _huella(ruta: pathlib.Path) -> str:
+    return hashlib.sha256(ruta.read_bytes()).hexdigest()[:10]
+
+
+def marcar_versiones() -> list[str]:
+    """Pone «?v=huella» en las referencias del index. Devuelve lo que cambió."""
+    indice = RAIZ / "web" / "index.html"
+    texto = indice.read_text(encoding="utf-8")
+    cambios = []
+
+    for nombre in VERSIONADOS:
+        archivo = RAIZ / "web" / nombre
+        if not archivo.exists():
+            continue
+        huella = _huella(archivo)
+        # Sólo en los atributos que cargan el archivo: si se busca el nombre
+        # suelto, también se marca cuando aparece dentro de un comentario.
+        patron = re.compile(
+            r'((?:src|href)=")' + re.escape(nombre) + r'(?:\?v=[0-9a-f]+)?(")'
+        )
+        nuevo, cuantos = patron.subn(rf"\g<1>{nombre}?v={huella}\g<2>", texto)
+        if cuantos and nuevo != texto:
+            cambios.append(f"{nombre} -> {huella}")
+        texto = nuevo
+
+    indice.write_text(texto, encoding="utf-8")
+    return cambios
+
+
 def main() -> int:
     modulos = recopilar()
     if not modulos:
@@ -59,6 +99,9 @@ def main() -> int:
     )
     peso = DESTINO.stat().st_size / 1024
     print(f"{DESTINO.relative_to(RAIZ)}: {len(modulos)} módulos, {peso:.0f} KB")
+
+    for cambio in marcar_versiones():
+        print(f"  {cambio}")
     return 0
 
 
