@@ -50,18 +50,19 @@ jobs:
       - name: Construir el APK
         working-directory: ${{ runner.temp }}
         env:
-          CLAVE: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          # Sin estas dos, bubblewrap pide la contraseña por teclado y el
+          # workflow se queda esperando hasta agotar el tiempo.
+          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           cp "$GITHUB_WORKSPACE/web/twa-manifest.json" .
           npm install -g @bubblewrap/cli@1.25.0
-          # Bubblewrap pregunta por la ruta del SDK y del JDK si no los ve; con
-          # estas variables usa los que ya trae el runner.
-          bubblewrap updateConfig --jdkPath "$JAVA_HOME" --androidSdkPath "$ANDROID_HOME"
+          # Bubblewrap pregunta por la ruta del SDK y del JDK si no las ve; así
+          # usa las que ya trae el runner en vez de descargarse otras.
+          bubblewrap updateConfig --jdkPath "$JAVA_HOME" --androidSdkPath "$ANDROID_SDK_ROOT"
           bubblewrap build --skipPwaValidation \
             --signingKeyPath "$RUNNER_TEMP/axioma.keystore" \
             --signingKeyAlias axioma
-        # La contraseña llega por variables que bubblewrap consulta sin pedirla.
-        continue-on-error: false
 
       - name: Renombrar el resultado
         working-directory: ${{ runner.temp }}
