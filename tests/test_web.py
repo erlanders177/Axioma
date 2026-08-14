@@ -56,14 +56,20 @@ def servidor():
 
 
 @pytest.fixture(scope="module")
-def navegador():
-    with playwright_api.sync_playwright() as p:
-        try:
-            instancia = p.chromium.launch()
-        except Exception as e:                                  # noqa: BLE001
-            pytest.skip(f"no hay Chromium instalado para Playwright: {e}")
+def playwright():
+    """Uno solo para todo el módulo: anidar `sync_playwright` da error."""
+    with playwright_api.sync_playwright() as instancia:
         yield instancia
-        instancia.close()
+
+
+@pytest.fixture(scope="module")
+def navegador(playwright):
+    try:
+        instancia = playwright.chromium.launch()
+    except Exception as e:                                      # noqa: BLE001
+        pytest.skip(f"no hay Chromium instalado para Playwright: {e}")
+    yield instancia
+    instancia.close()
 
 
 @pytest.fixture(params=[("movil", 390, 844, True), ("escritorio", 1280, 800, False)],
@@ -193,11 +199,75 @@ def test_el_aviso_de_instalacion_se_escucha_desde_el_principio(pagina):
     assert html.index("beforeinstallprompt") < html.index("app.js")
 
 
-def test_si_no_hay_instalacion_automatica_se_ofrece_el_apk(pagina):
-    """En un navegador sin instalación nativa, «Instalar» lleva al APK."""
-    pagina.on("dialog", lambda d: d.accept())          # acepta el «¿descargar?»
+def test_el_boton_instalar_siempre_ofrece_alguna_via(pagina):
+    """Pulsar «Instalar» nunca puede acabar en un callejón sin salida."""
+    pagina.click("#btn-instalar")
+    dialogo = pagina.locator("#dialogo-instalar")
+    assert dialogo.is_visible()
+    texto = dialogo.text_content()
+    assert any(pista in texto for pista in
+               ("Instalar ahora", "APK", "menú", "Compartir")), texto
+
+
+# --------------------------------------------------------------------------- #
+# Instalarla desde cualquier navegador
+# --------------------------------------------------------------------------- #
+
+def test_firefox_de_android_ofrece_el_apk_y_los_pasos(navegador, servidor):
+    """Firefox no implementa la instalación de un toque.
+
+    No es algo que se pueda arreglar desde la página, así que lo que toca es
+    ofrecer lo que sí funciona ahí: el APK, que en Android vale para cualquier
+    navegador, y la ruta exacta del menú de Firefox.
+    """
+    contexto = navegador.new_context(
+        viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True,
+        user_agent="Mozilla/5.0 (Android 14; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0",
+    )
+    pagina = contexto.new_page()
+    pagina.goto(servidor, wait_until="load")
+    pagina.wait_for_selector("#menu-calculadora", timeout=ESPERA)
+
+    pagina.click("#btn-instalar")
+    dialogo = pagina.text_content("#dialogo-instalar")
+    assert "Descargar la aplicación (APK)" in dialogo
+    assert "Firefox" in dialogo and "tres puntos" in dialogo
+
     with pagina.expect_download(timeout=30000) as descarga:
-        pagina.click("#btn-instalar")
-    # La URL final no es la de GitHub: redirige a su almacén de descargas, así
-    # que lo que identifica el archivo es el nombre que llega, no la dirección.
+        pagina.click("#dialogo-cuerpo button.accion")
     assert descarga.value.suggested_filename == "Axioma.apk"
+    contexto.close()
+
+
+def test_el_iphone_recibe_los_pasos_de_safari(navegador, servidor):
+    contexto = navegador.new_context(
+        viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True,
+        user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+                   "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    )
+    pagina = contexto.new_page()
+    pagina.goto(servidor, wait_until="load")
+    pagina.wait_for_selector("#menu-calculadora", timeout=ESPERA)
+
+    pagina.click("#btn-instalar")
+    dialogo = pagina.text_content("#dialogo-instalar")
+    assert "Compartir" in dialogo and "pantalla de inicio" in dialogo
+    # En un iPhone no se ofrece el APK, que no serviría de nada.
+    assert "APK" not in dialogo
+    contexto.close()
+
+
+def test_firefox_real_muestra_el_dialogo(playwright, servidor):
+    """Con el Firefox de verdad, no sólo con su identificación."""
+    try:
+        navegador = playwright.firefox.launch()
+    except Exception as e:                                   # noqa: BLE001
+        pytest.skip(f"no hay Firefox para Playwright: {e}")
+    pagina = navegador.new_page(viewport={"width": 390, "height": 844})
+    pagina.goto(servidor, wait_until="load")
+    pagina.wait_for_selector("#menu-calculadora", timeout=ESPERA)
+    assert pagina.is_visible("#btn-instalar")
+    pagina.click("#btn-instalar")
+    assert pagina.is_visible("#dialogo-instalar")
+    assert pagina.text_content("#dialogo-instalar").strip()
+    navegador.close()

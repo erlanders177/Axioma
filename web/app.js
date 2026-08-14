@@ -22,6 +22,9 @@ const APARTADOS = [
 //: salida para los navegadores que no ofrecen instalación automática.
 const ENLACE_APK =
   "https://github.com/erlanders177/Axioma/releases/latest/download/Axioma.apk";
+//: Y la de Windows, para quien llegue desde un ordenador.
+const ENLACE_EXE =
+  "https://github.com/erlanders177/Axioma/releases/latest/download/Axioma.exe";
 
 const estado = {
   py: null,
@@ -708,19 +711,44 @@ function prepararTema() {
 
 /* ------------------------------------------------------------ instalar -- */
 
-/** Deja Axioma instalado como una aplicación más del teléfono o del escritorio.
+/** Qué navegador es y qué sabe hacer con la instalación.
  *
- * Android y el escritorio avisan con `beforeinstallprompt` cuando el sitio
- * cumple los requisitos, y entonces se puede instalar con un botón. Safari no
- * implementa nada de eso: allí lo único que cabe es explicar dónde está la
- * opción, porque el usuario no tiene por qué saberlo.
+ * No es adorno: cada uno la esconde en un sitio distinto, y unos cuantos ni
+ * siquiera la implementan. Decirle a todo el mundo «abra el menú de los tres
+ * puntos» hace que la mitad no encuentre nada.
+ */
+function navegador() {
+  const ua = navigator.userAgent;
+  const esIOS = /iphone|ipad|ipod/i.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return {
+    ios: esIOS,
+    android: /android/i.test(ua),
+    firefox: /firefox|fxios/i.test(ua),
+    samsung: /samsungbrowser/i.test(ua),
+    opera: /opr\//i.test(ua),
+    safari: esIOS && !/crios|fxios|edgios/i.test(ua),
+    escritorio: !esIOS && !/android|mobile/i.test(ua),
+    windows: /windows/i.test(ua),
+  };
+}
+
+/** Deja Axioma instalado como una aplicación más.
+ *
+ * Hay tres caminos y se ofrece el que sirva en cada navegador:
+ *
+ * 1. Instalación de un toque, si el navegador la ofrece (Chrome, Edge, Opera,
+ *    Samsung Internet y los de escritorio menos Firefox).
+ * 2. El APK, que en Android funciona sea cual sea el navegador.
+ * 3. La opción del menú, indicando la ruta exacta de *ese* navegador.
  */
 function prepararInstalacion() {
   const boton = $("#btn-instalar");
+  const dialogo = $("#dialogo-instalar");
+  const cuerpo = $("#dialogo-cuerpo");
 
   // El aviso lo recoge un script del propio index.html, que corre antes que
-  // nada: cuando esta función se ejecuta ya se ha cargado el motor de cálculo
-  // y el navegador hace rato que avisó. Aquí sólo se recupera.
+  // nada: cuando esta función se ejecuta, el navegador hace rato que avisó.
   const peticion = () => window.__peticionInstalacion;
   document.addEventListener("axioma:instalable", () => { boton.hidden = false; });
 
@@ -729,59 +757,96 @@ function prepararInstalacion() {
     window.__peticionInstalacion = null;
   });
 
-  const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const yaInstalada = window.matchMedia("(display-mode: standalone)").matches ||
                       window.navigator.standalone === true;
-
-  // El botón se muestra siempre que no esté ya instalada, sin esperar a
-  // `beforeinstallprompt`: ese evento no existe en Safari y varios navegadores
-  // de Android lo retrasan o no lo mandan nunca. Si llega, el botón instala de
-  // un toque; si no llega, explica dónde está la opción. Lo que no puede pasar
-  // es que se pueda instalar y no haya manera de enterarse.
   boton.hidden = yaInstalada;
 
-  boton.onclick = async () => {
-    const guardada = peticion();
-    if (guardada) {
-      // Esto es lo que abre el cuadro del sistema: «¿Instalar Axioma?».
-      guardada.prompt();
-      const { outcome } = await guardada.userChoice;
-      if (outcome === "accepted") boton.hidden = true;
-      window.__peticionInstalacion = null;
-      return;
-    }
+  $("#dialogo-cerrar").onclick = () => dialogo.close();
+  boton.onclick = () => abrirDialogoDeInstalacion(dialogo, cuerpo, peticion);
+}
 
-    // Sin aviso del navegador no hay instalación de un toque. Antes de mandar
-    // al usuario a rebuscar por los menús, se le ofrece el APK, que es
-    // justamente «pulsar y que se descargue».
-    if (!esIOS && confirm(
-        "Este navegador no ofrece la instalación automática.\n\n" +
-        "¿Descargar la aplicación (APK) para instalarla directamente?\n\n" +
-        "Si prefiere el otro camino, cancele y le indico dónde está la opción " +
-        "en el menú del navegador.")) {
-      window.location.href = ENLACE_APK;
-      return;
-    }
-    alert(
-      esIOS
-        ? [
-            "Para instalarla en el iPhone:",
-            "",
-            "1. Toque el botón Compartir (el cuadrado con la flecha hacia arriba).",
-            "2. Elija «Añadir a pantalla de inicio».",
-            "",
-            "Quedará como una aplicación más, y funciona sin conexión.",
-          ].join("\n")
-        : [
-            "Para instalarla:",
-            "",
-            "Abra el menú del navegador (los tres puntos) y elija",
-            "«Instalar aplicación» o «Añadir a pantalla de inicio».",
-            "",
-            "Quedará como una aplicación más, y funciona sin conexión.",
-          ].join("\n")
-    );
+function abrirDialogoDeInstalacion(dialogo, cuerpo, peticion) {
+  const nav = navegador();
+  cuerpo.replaceChildren();
+
+  const opcion = (titulo, descripcion, alPulsar) => {
+    const caja = crear("div", "opcion");
+    const accion = crear("button", "accion", titulo);
+    accion.onclick = alPulsar;
+    caja.append(accion, crear("p", "pista", descripcion));
+    cuerpo.append(caja);
   };
+
+  const pasos = (titulo, lineas) => {
+    cuerpo.append(crear("h3", null, titulo));
+    const lista = crear("ol", "pasos");
+    for (const linea of lineas) lista.append(crear("li", null, linea));
+    cuerpo.append(lista);
+  };
+
+  // 1. Lo mejor, cuando el navegador lo permite: un toque y listo.
+  if (peticion()) {
+    opcion("Instalar ahora", "Queda con su icono, sin barra de direcciones y funciona sin conexión.",
+      async () => {
+        const guardada = peticion();
+        guardada.prompt();
+        const { outcome } = await guardada.userChoice;
+        window.__peticionInstalacion = null;
+        if (outcome === "accepted") $("#btn-instalar").hidden = true;
+        dialogo.close();
+      });
+  }
+
+  // 2. En Android el APK vale para cualquier navegador, Firefox incluido.
+  if (nav.android) {
+    opcion("Descargar la aplicación (APK)",
+      "Se descarga un archivo; ábralo y se instala. Android pedirá permiso " +
+      "porque no viene de Google Play.",
+      () => { window.location.href = ENLACE_APK; });
+  }
+
+  // 3. Y la opción del menú, con la ruta de este navegador en concreto.
+  if (nav.ios) {
+    pasos(nav.safari ? "Desde Safari" : "Desde Safari (es el único que puede en iPhone)", [
+      "Toque el botón Compartir: el cuadrado con la flecha hacia arriba.",
+      "Baje hasta «Añadir a pantalla de inicio».",
+      "Confirme con «Añadir».",
+    ]);
+    if (!nav.safari) {
+      cuerpo.append(crear("p", "pista",
+        "En el iPhone sólo Safari puede instalar aplicaciones web; los demás " +
+        "navegadores usan su motor pero no ofrecen la opción."));
+    }
+  } else if (nav.firefox && nav.android) {
+    pasos("Desde Firefox", [
+      "Toque el menú: los tres puntos, arriba a la derecha.",
+      "Elija «Instalar» o «Añadir a la pantalla de inicio».",
+      "Confirme el nombre y pulse «Añadir».",
+    ]);
+  } else if (nav.firefox) {
+    cuerpo.append(crear("p", "pista",
+      "Firefox en el ordenador no instala aplicaciones web. Puede dejarla " +
+      "como marcador, usar Chrome o Edge para instalarla, o descargar la " +
+      "aplicación de Windows."));
+    if (nav.windows) {
+      opcion("Descargar la aplicación de Windows",
+        "La versión de escritorio, con los dieciséis apartados.",
+        () => { window.location.href = ENLACE_EXE; });
+    }
+  } else if (nav.samsung) {
+    pasos("Desde Samsung Internet", [
+      "Toque el menú de abajo a la derecha.",
+      "Elija «Añadir página a» y luego «Pantalla de inicio».",
+    ]);
+  } else if (!peticion()) {
+    pasos("Desde el menú del navegador", [
+      "Abra el menú del navegador.",
+      "Busque «Instalar aplicación» o «Añadir a la pantalla de inicio».",
+    ]);
+  }
+
+  if (typeof dialogo.showModal === "function") dialogo.showModal();
+  else dialogo.setAttribute("open", "");        // navegadores sin <dialog> modal
 }
 
 window.addEventListener("resize", refrescarMenu);

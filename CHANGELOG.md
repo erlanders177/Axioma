@@ -4,6 +4,39 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ---
 
+## 4.1.1
+
+Instalarla desde cualquier navegador, no sólo desde Chrome.
+
+### Corregido
+
+- **El botón «Instalar» nunca llegaba a instalar.** El navegador avisa de que
+  la página se puede instalar nada más cargarla, y ese aviso se escuchaba
+  después de arrancar el motor de cálculo: cuatro segundos tarde, con el aviso
+  ya perdido. Por eso el botón acababa siempre explicando cómo llegar a la
+  opción del menú en lugar de instalar. Ahora el detector es lo primero que se
+  ejecuta en la página.
+
+### Cada navegador tiene lo suyo
+
+Pulsar «Instalar» abre un cuadro con lo que de verdad funciona en ese
+navegador, en vez de un aviso igual para todos:
+
+| Navegador | Qué ofrece |
+|-----------|------------|
+| Chrome, Edge, Opera, Samsung | **Instalar ahora**, de un toque |
+| **Firefox en Android** | Descargar el **APK**, y la ruta de su menú |
+| Safari en iPhone | Los pasos de Compartir → Añadir a pantalla de inicio |
+| Firefox en el ordenador | Dice que no puede instalar webs, y ofrece el .exe |
+
+Firefox no implementa la instalación automática, y eso no se puede arreglar
+desde la página. Lo que sí se puede es dejar de fingir que sí y ofrecer el
+camino que funciona ahí.
+
+Tres pruebas nuevas, una de ellas con el Firefox de verdad.
+
+---
+
 ## 4.1.0
 
 Axioma como aplicación de verdad, no sólo como página.

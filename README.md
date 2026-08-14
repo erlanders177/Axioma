@@ -121,7 +121,9 @@ Funciona en el móvil y en el ordenador, sin instalar nada.
 
 - **Desde la propia página**: el botón «Instalar» de la cabecera. Queda con su
   icono en la pantalla de inicio, se abre sin barra de direcciones y funciona
-  sin conexión. Sirve en Android, en iPhone y en el escritorio.
+  sin conexión. El botón se adapta al navegador: en Chrome, Edge, Opera o
+  Samsung instala de un toque; en Firefox de Android ofrece el APK y la ruta de
+  su menú; en iPhone, los pasos de Safari.
 - **Con el APK**: `Axioma.apk` está en la
   [última versión](https://github.com/erlanders177/Axioma/releases/latest).
   Pesa 1,2 MB porque no duplica nada, es una envoltura sobre la misma web.
