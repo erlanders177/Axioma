@@ -19,7 +19,7 @@ const APARTADOS = [
 ];
 
 //: Se muestra en la cabecera. Debe subir en cada publicación.
-const VERSION = "4.1.2";
+const VERSION = "4.2.0";
 
 //: La aplicación de Android, adjunta a la última versión publicada. Es la
 //: salida para los navegadores que no ofrecen instalación automática.

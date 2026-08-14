@@ -18,13 +18,13 @@
 
 //: Al subirlo se descarta la caché anterior entera. Media aplicación vieja y
 //: media nueva es peor que volver a descargar.
-const CACHE = "axioma-v3";
+const CACHE = "axioma-v4";
 
 const PROPIOS = [
   "./", "./index.html", "./estilo.css", "./app.js",
   "./nucleo.json", "./manifest.webmanifest",
   "./icono.svg", "./icono-192.png", "./icono-512.png",
-  "./icono-maskable-512.png", "./apple-touch-icon.png",
+  "./icono-maskable-512.png", "./apple-touch-icon.png", "./social.png",
 ];
 
 /** ¿Es un archivo de la aplicación, de los que cambian al publicar? */

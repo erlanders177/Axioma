@@ -1,0 +1,7 @@
+# Axioma — calculadora científica
+# https://erlanders177.github.io/Axioma/
+
+User-agent: *
+Allow: /
+
+Sitemap: https://erlanders177.github.io/Axioma/sitemap.xml

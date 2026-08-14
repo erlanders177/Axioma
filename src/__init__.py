@@ -1,7 +1,7 @@
 """Axioma — calculadora científica multifunción."""
 
 __nombre__ = "Axioma"
-__version__ = "4.1.2"
+__version__ = "4.2.0"
 __autor__ = "Aarón Aranda Torrijos"
 __alias__ = "erlanders177"
 __contacto__ = "aaron.aranda.t@gmail.com"

@@ -354,3 +354,60 @@ def test_una_version_nueva_llega_al_navegador(playwright, tmp_path_factory):
     finally:
         navegador.close()
         proceso.terminate()
+
+
+# --------------------------------------------------------------------------- #
+# Que se pueda encontrar buscando, no sólo con el enlace exacto
+# --------------------------------------------------------------------------- #
+
+def test_la_pagina_dice_de_que_va_sin_ejecutar_javascript():
+    """Un buscador lee el HTML tal cual llega, sin montar la aplicación.
+
+    La interfaz se dibuja con JavaScript, así que si el HTML no cuenta nada,
+    para Google esto es una página en blanco y no la enseña a nadie.
+    """
+    import html as htmlib
+    import json
+    import re
+
+    bruto = (WEB / "index.html").read_text(encoding="utf-8")
+
+    titulo = re.search(r"<title>(.*?)</title>", bruto, re.S).group(1)
+    assert "alculadora" in titulo and len(titulo) > 25, titulo
+
+    descripcion = re.search(r'name="description" content="(.*?)"', bruto).group(1)
+    assert 60 < len(descripcion) < 300, f"descripción de {len(descripcion)} caracteres"
+
+    # Texto legible: se quitan los scripts y las etiquetas, como haría un robot.
+    visible = re.sub(r"<script.*?</script>", " ", bruto, flags=re.S)
+    visible = htmlib.unescape(re.sub(r"<[^>]+>", " ", visible))
+    palabras = len(visible.split())
+    assert palabras > 90, f"sólo {palabras} palabras legibles sin JavaScript"
+    for termino in ("Geometría", "Ecuaciones", "Conversiones", "instalar"):
+        assert termino in visible, f"falta «{termino}» en el texto legible"
+
+    # Ficha para compartir y para el buscador.
+    for etiqueta in ("og:title", "og:description", "og:image", "og:url"):
+        assert f'property="{etiqueta}"' in bruto, etiqueta
+    assert 'rel="canonical"' in bruto
+
+    datos = json.loads(re.search(r'application/ld\+json">(.*?)</script>', bruto, re.S).group(1))
+    assert datos["@type"] == "SoftwareApplication"
+    assert datos["name"] == "Axioma"
+
+
+def test_hay_robots_y_sitemap():
+    robots = (WEB / "robots.txt").read_text(encoding="utf-8")
+    assert "Sitemap:" in robots and "Allow: /" in robots
+
+    mapa = (WEB / "sitemap.xml").read_text(encoding="utf-8")
+    # Con el namespace mal escrito, los buscadores descartan el archivo entero.
+    assert "http://www.sitemaps.org/schemas/sitemap/0.9" in mapa
+    assert "https://erlanders177.github.io/Axioma/" in mapa
+
+
+def test_la_imagen_para_compartir_tiene_la_medida_que_esperan():
+    from PIL import Image
+
+    with Image.open(WEB / "social.png") as imagen:
+        assert imagen.size == (1200, 630), imagen.size

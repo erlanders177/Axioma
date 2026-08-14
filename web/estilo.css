@@ -389,3 +389,31 @@ button.plano.destacado {
 .dialogo .pasos { margin: 0; padding-left: 20px; color: var(--texto); font-size: 14px; }
 .dialogo .pasos li { margin: 5px 0; }
 #dialogo-cerrar { margin-top: 20px; }
+
+/* ------------------------------------------------- presentación de la carga -- */
+
+.tarjeta-carga h1 { margin: 0; font-size: 26px; letter-spacing: 1px; }
+.tarjeta-carga .reclamo { color: var(--texto); margin: 6px 0 16px; font-size: 14px; }
+
+/* Lo que lee un buscador y quien llega por primera vez. En pantallas bajas
+   estorbaría a la barra de progreso, así que se pliega. */
+.presentacion {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--borde);
+  text-align: left;
+  font-size: 13px;
+  color: var(--suave);
+}
+.presentacion h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .8px; margin: 0 0 8px; }
+.presentacion ul { margin: 0 0 12px; padding-left: 18px; }
+.presentacion li { margin: 4px 0; }
+.presentacion b { color: var(--texto); font-weight: 600; }
+.presentacion a { color: var(--acento); }
+.presentacion code {
+  background: var(--panel-alto);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+@media (max-height: 700px) { .presentacion { display: none; } }

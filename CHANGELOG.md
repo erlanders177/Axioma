@@ -4,6 +4,36 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ---
 
+## 4.2.0
+
+Que se pueda encontrar buscando, y no sólo con el enlace exacto.
+
+### Para los buscadores
+
+La interfaz se dibuja con JavaScript, así que el HTML que llegaba a Google no
+decía nada de la aplicación: un título de una palabra y la pantalla de carga.
+Para un buscador, una página en blanco.
+
+- **Título y descripción** que cuentan qué es y para quién.
+- **Texto de verdad en el HTML**: la pantalla de carga presenta ahora los
+  apartados y cómo instalarla. Sirve para el buscador y para quien llega por
+  primera vez y espera esos cuatro segundos.
+- **Datos estructurados** (`SoftwareApplication`): le dicen al buscador que
+  esto es una aplicación gratuita, en español, y en qué sistemas funciona.
+- `robots.txt` y `sitemap.xml`.
+
+### Al compartir el enlace
+
+Una imagen propia de 1200×630 (`tools/generar_social.py`), con el icono, lo que
+hace y la dirección. Antes, mandarlo por WhatsApp mostraba un recuadro gris.
+
+### La ficha del repositorio
+
+Decía «doce módulos» y «para escritorio», de antes de la reescritura, y no
+enlazaba a la aplicación. Ahora está al día y apunta a la web.
+
+---
+
 ## 4.1.2
 
 Las correcciones llegan al móvil. Antes no llegaban.

@@ -3,9 +3,59 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Axioma — calculadora científica multifunción, en el navegador y sin conexión.">
+<meta name="description" content="Calculadora científica gratuita en español: geometría con 61 figuras, ecuaciones paso a paso, 555 unidades, derivadas e integrales. Funciona en el móvil y en el ordenador, sin conexión y sin instalar nada.">
 <meta name="theme-color" content="#11151f">
-<title>Axioma</title>
+<title>Axioma · Calculadora científica en español, gratis y sin conexión</title>
+<link rel="canonical" href="https://erlanders177.github.io/Axioma/">
+
+<!-- Lo que se ve al compartir el enlace por WhatsApp, Telegram o Twitter.
+     Sin esto sale un recuadro gris, y un enlace sin cara casi no se comparte. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Axioma">
+<meta property="og:locale" content="es_ES">
+<meta property="og:title" content="Axioma · Calculadora científica en español">
+<meta property="og:description" content="Geometría, ecuaciones paso a paso, unidades y cálculo. En el móvil y en el ordenador, sin conexión y gratis.">
+<meta property="og:url" content="https://erlanders177.github.io/Axioma/">
+<meta property="og:image" content="https://erlanders177.github.io/Axioma/social.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<!-- Para que el buscador sepa que esto es una aplicación y no un artículo. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Axioma",
+  "alternateName": "Axioma calculadora científica",
+  "applicationCategory": "EducationalApplication",
+  "applicationSubCategory": "Calculadora científica",
+  "operatingSystem": "Android, iOS, Windows, macOS, Linux",
+  "inLanguage": "es",
+  "url": "https://erlanders177.github.io/Axioma/",
+  "installUrl": "https://erlanders177.github.io/Axioma/",
+  "downloadUrl": "https://github.com/erlanders177/Axioma/releases/latest",
+  "image": "https://erlanders177.github.io/Axioma/social.png",
+  "screenshot": "https://erlanders177.github.io/Axioma/social.png",
+  "softwareVersion": "4.1.2",
+  "description": "Calculadora científica en español: geometría con 61 figuras, ecuaciones e inecuaciones paso a paso, 555 unidades de conversión, derivadas e integrales, combinatoria y bases numéricas. Funciona sin conexión.",
+  "featureList": [
+    "Calculadora científica con variables y unidades",
+    "61 figuras geométricas, planas y cuerpos",
+    "Ecuaciones resueltas paso a paso",
+    "51 magnitudes y 555 unidades de conversión",
+    "Derivadas, integrales y límites",
+    "Combinatoria y bases numéricas"
+  ],
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+  "author": {
+    "@type": "Person",
+    "name": "Aarón Aranda Torrijos",
+    "url": "https://github.com/erlanders177"
+  },
+  "license": "https://polyformproject.org/licenses/noncommercial/1.0.0/"
+}
+</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icono.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -15,7 +65,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Axioma">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="stylesheet" href="estilo.css?v=8f2063eb98">
+<link rel="stylesheet" href="estilo.css?v=1ffcc2dfdb">
 
 <!-- Lo primero de todo, antes de cargar nada más.
      El navegador avisa con `beforeinstallprompt` en cuanto decide que la página
@@ -66,13 +116,39 @@
   <button class="accion secundaria" id="dialogo-cerrar">Cerrar</button>
 </dialog>
 
+<!-- La pantalla de carga es además lo único que un buscador puede leer: la
+     aplicación se dibuja con JavaScript y, sin esto, la página no diría de qué
+     va. Así que aquí va texto de verdad, el mismo que sirve para que quien
+     llega sepa qué ha encontrado mientras arranca. -->
 <div class="cargando" id="cargando">
   <div class="tarjeta-carga">
-    <b>Axioma</b>
+    <h1>Axioma</h1>
+    <p class="reclamo">Calculadora científica en español, gratis y sin conexión.</p>
     <p id="estado-carga">Preparando el motor de cálculo…</p>
     <div class="progreso"><i id="barra-progreso"></i></div>
     <small>La primera vez tarda unos segundos: se descarga Python entero.
       Después funciona sin conexión.</small>
+
+    <div class="presentacion">
+      <h2>Qué trae</h2>
+      <ul>
+        <li><b>Geometría</b>: 61 figuras, planas y cuerpos, mezclando unidades
+            (radio en cm y altura en mm en la misma figura).</li>
+        <li><b>Ecuaciones</b> e inecuaciones resueltas <b>paso a paso</b>.</li>
+        <li><b>Conversiones</b>: 51 magnitudes y 555 unidades.</li>
+        <li><b>Cálculo</b>: derivadas, integrales y límites.</li>
+        <li><b>Calculadora</b> científica con variables y unidades:
+            <code>3 km + 200 m</code>.</li>
+        <li><b>Combinatoria</b> y <b>bases numéricas</b>.</li>
+      </ul>
+      <p>
+        Funciona en el móvil y en el ordenador. Se puede
+        <b>instalar como aplicación</b> desde el propio navegador, y hay
+        <a href="https://github.com/erlanders177/Axioma/releases/latest">APK
+        para Android y programa para Windows</a>. El
+        <a href="https://github.com/erlanders177/Axioma">código es abierto</a>.
+      </p>
+    </div>
   </div>
 </div>
 
@@ -80,6 +156,6 @@
         onerror="document.getElementById('estado-carga').innerHTML =
           '<span class=&quot;error&quot;>No se pudo descargar el motor de Python. ' +
           'Compruebe la conexión y vuelva a cargar la página.</span>'"></script>
-<script src="app.js?v=a3560153a2"></script>
+<script src="app.js?v=55d0b0c19e"></script>
 </body>
 </html>

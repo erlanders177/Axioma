@@ -264,8 +264,11 @@ Axioma/
 ├── tools/
 │   ├── generar_icono.py        regenera el icono de forma reproducible
 │   ├── preparar_web.py         empaqueta src/core para el navegador
+│   ├── generar_social.py       imagen para compartir el enlace
 │   └── crear_acceso_directo.py acceso directo en el escritorio
 ├── web/                        la misma calculadora en el navegador
+│   ├── social.png              la imagen que se ve al compartir el enlace
+│   ├── robots.txt              y sitemap.xml, para los buscadores
 │   ├── index.html
 │   ├── app.js                  interfaz; no calcula nada
 │   ├── estilo.css              adaptable: móvil y ordenador
@@ -327,7 +330,7 @@ pip install pytest
 python -m pytest tests/ -q
 ```
 
-523 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
+534 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
 unidades, las 61 figuras contra resultados conocidos, entradas maliciosas
 bloqueadas en el evaluador, resultados de libro comprobados (la serie de Fourier
 de x, la precisión relativa de Euler frente a Runge-Kutta) y los dieciséis
