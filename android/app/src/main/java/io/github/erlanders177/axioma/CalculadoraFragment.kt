@@ -51,6 +51,7 @@ class CalculadoraFragment : ApartadoFragment() {
         pantalla.gravity = Gravity.END
         pantalla.setTextColor(contexto.getColor(R.color.texto))
         pantalla.setTextIsSelectable(true)
+        pantalla.tag = "pantalla"          // por dónde la agarra la prueba
 
         previa = TextView(contexto)
         previa.textSize = 15f

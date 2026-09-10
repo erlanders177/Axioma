@@ -76,6 +76,15 @@ jobs:
           name: Axioma-nativa
           path: ${{ steps.apk.outputs.ruta }}
 
+      - name: Adjuntarlo a la versión publicada
+        if: github.event_name == 'release' || inputs.etiqueta != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ETIQUETA: ${{ github.event.release.tag_name || inputs.etiqueta }}
+        run: |
+          cp "${{ steps.apk.outputs.ruta }}" "$RUNNER_TEMP/Axioma.apk"
+          gh release upload "$ETIQUETA" "$RUNNER_TEMP/Axioma.apk" --clobber
+
   probar:
     runs-on: ubuntu-latest
     steps:
