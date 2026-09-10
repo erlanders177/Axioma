@@ -4,6 +4,25 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ---
 
+## 5.0.1
+
+### Corregido
+
+**El botón de descargar la aplicación abría una pestaña en blanco.** El enlace
+llevaba `target="_blank"`, y el navegador abre la pestaña, empieza la descarga
+en otro sitio y deja esa pestaña vacía para siempre. Desde fuera es idéntico a
+una descarga que no funciona.
+
+Ahora es un enlace normal, sin pestaña nueva: el archivo viene marcado como
+adjunto, así que se descarga sin moverse de la aplicación. Comprobado contra
+GitHub de verdad: llega `Axioma.apk`, no se abre ninguna pestaña y la
+calculadora sigue donde estaba.
+
+Además, el diálogo avisa de que son 56 MB y de que el aviso de la descarga sale
+en la barra del móvil, y ofrece la página de descargas por si acaso.
+
+---
+
 ## 5.0.0
 
 **Aplicación de Android de verdad.** Ni una página metida en un envoltorio ni

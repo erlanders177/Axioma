@@ -256,14 +256,19 @@ def test_firefox_de_android_ofrece_el_apk_y_los_pasos(navegador, servidor):
     assert "Descargar la aplicación de Android" in dialogo
     assert "Firefox" in dialogo and "tres puntos" in dialogo
 
-    # Se intercepta la descarga en vez de bajar el APK de verdad: son megas por
-    # internet en cada ejecución, y lo que se comprueba es a dónde apunta.
-    pedidas = []
-    contexto.route("**/Axioma.apk*", lambda ruta: (
-        pedidas.append(ruta.request.url), ruta.abort()))
-    pagina.click("#dialogo-cuerpo button.accion")
-    pagina.wait_for_timeout(1500)
-    assert pedidas and pedidas[0].endswith("Axioma.apk"), pedidas
+    # Un enlace de verdad, no un botón que cambie la dirección de la página:
+    # eso dejaba la aplicación en blanco mientras bajaban los 56 MB, y dentro
+    # de la aplicación instalada abría una vista que ni descarga.
+    descarga = pagina.locator("#dialogo-cuerpo a.accion").first
+    assert descarga.get_attribute("href").endswith("Axioma.apk")
+    # Sin `target`: abrirlo en otra pestaña deja una pestaña vacía que no carga
+    # nada, que es exactamente lo que parece una descarga rota.
+    assert descarga.get_attribute("target") is None
+
+    # Y una salida por si la descarga directa no arranca.
+    enlaces = pagina.locator("#dialogo-cuerpo a.accion")
+    destinos = [enlaces.nth(i).get_attribute("href") for i in range(enlaces.count())]
+    assert any(d.endswith("/releases/latest") for d in destinos), destinos
     contexto.close()
 
 

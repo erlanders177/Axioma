@@ -23,7 +23,7 @@ const APARTADOS = [
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js";
 
 //: Se muestra en la cabecera. Debe subir en cada publicación.
-const VERSION = "5.0.0";
+const VERSION = "5.0.1";
 
 //: La aplicación de Android, adjunta a la última versión publicada. Desde la
 //: 5.0 es nativa y lo lleva todo dentro: no necesita esta página ni conexión.
@@ -32,6 +32,10 @@ const ENLACE_APK =
 //: Y la de Windows, para quien llegue desde un ordenador.
 const ENLACE_EXE =
   "https://github.com/erlanders177/Axioma/releases/latest/download/Axioma.exe";
+
+//: La página de la versión. Es la salida cuando la descarga directa se
+//: atraganta: una página normal que carga y desde la que se puede bajar todo.
+const ENLACE_VERSION = "https://github.com/erlanders177/Axioma/releases/latest";
 
 const estado = {
   py: null,
@@ -923,6 +927,22 @@ function abrirDialogoDeInstalacion(dialogo, cuerpo, peticion) {
     cuerpo.append(caja);
   };
 
+  /* Para descargar, un enlace de verdad y **sin** `target`.
+   *
+   * `location.href` dejaba la aplicación en blanco mientras bajaban los 56 MB.
+   * Abrirlo en otra pestaña es peor todavía: se queda una pestaña vacía que
+   * nunca carga nada, comprobado en móvil y en escritorio. Un enlace normal
+   * con el archivo marcado como adjunto descarga sin moverse de la página. */
+  const enlace = (titulo, url, descripcion, adjunto = true) => {
+    const caja = crear("div", "opcion");
+    const anclaje = crear("a", "accion", titulo);
+    anclaje.href = url;
+    anclaje.rel = "noopener";
+    if (adjunto) anclaje.setAttribute("download", "");
+    caja.append(anclaje, crear("p", "pista", descripcion));
+    cuerpo.append(caja);
+  };
+
   const pasos = (titulo, lineas) => {
     cuerpo.append(crear("h3", null, titulo));
     const lista = crear("ol", "pasos");
@@ -945,11 +965,14 @@ function abrirDialogoDeInstalacion(dialogo, cuerpo, peticion) {
 
   // 2. En Android el APK vale para cualquier navegador, Firefox incluido.
   if (nav.android) {
-    opcion("Descargar la aplicación de Android",
+    enlace("Descargar la aplicación de Android", ENLACE_APK,
       "Aplicación nativa: lo lleva todo dentro, abre al momento y no necesita " +
-      "esta página ni conexión. Android pedirá permiso al instalarla porque no " +
-      "viene de Google Play.",
-      () => { window.location.href = ENLACE_APK; });
+      "esta página ni conexión. Son 56 MB, así que tarda un poco; el aviso de " +
+      "la descarga sale en la barra de arriba del móvil. Android pedirá permiso " +
+      "al instalarla porque no viene de Google Play.");
+
+    enlace("Ver la página de descargas", ENLACE_VERSION,
+      "Si la descarga no arranca, desde aquí puede bajarla a mano.", false);
   }
 
   // 3. Y la opción del menú, con la ruta de este navegador en concreto.
@@ -976,9 +999,8 @@ function abrirDialogoDeInstalacion(dialogo, cuerpo, peticion) {
       "como marcador, usar Chrome o Edge para instalarla, o descargar la " +
       "aplicación de Windows."));
     if (nav.windows) {
-      opcion("Descargar la aplicación de Windows",
-        "La versión de escritorio, con los dieciséis apartados.",
-        () => { window.location.href = ENLACE_EXE; });
+      enlace("Descargar la aplicación de Windows", ENLACE_EXE,
+        "La versión de escritorio, con los dieciséis apartados.");
     }
   } else if (nav.samsung) {
     pasos("Desde Samsung Internet", [
@@ -1149,8 +1171,10 @@ function avisarDeLaAplicacionNativa() {
   aviso.append(crear("span", null,
     "Ya hay aplicación de Android: lo lleva todo dentro y abre al momento."));
 
-  const descargar = crear("button", "accion", "Descargar");
-  descargar.onclick = () => { window.location.href = ENLACE_APK; };
+  const descargar = crear("a", "accion", "Descargar");
+  descargar.href = ENLACE_APK;
+  descargar.rel = "noopener";
+  descargar.setAttribute("download", "");
   const cerrar = crear("button", "accion secundaria", "Ahora no");
   cerrar.onclick = () => {
     try { localStorage.setItem(CLAVE, "1"); } catch { /* da igual */ }

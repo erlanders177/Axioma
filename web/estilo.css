@@ -475,3 +475,27 @@ body.teclado-abierto .menu { display: none; }
   font-size: 14px;
   color: var(--texto);
 }
+
+/* Los enlaces de descarga se ven y se tocan como botones. */
+a.accion {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px;
+  border: 1px solid var(--acento);
+  border-radius: 9px;
+  background: var(--acento);
+  color: #fff;
+  font-weight: 600;
+  font-size: 16px;
+  text-align: center;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+a.accion.secundaria {
+  background: var(--panel-alto);
+  border-color: var(--borde);
+  color: var(--texto);
+  font-weight: 500;
+}
+.aviso-nativa .fila a.accion { flex: 1; }
