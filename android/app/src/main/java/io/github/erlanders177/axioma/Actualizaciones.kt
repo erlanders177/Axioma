@@ -30,8 +30,10 @@ object Actualizaciones {
     private const val MEMORIA = "axioma-actualizaciones"
     private const val UN_DIA = 24 * 60 * 60 * 1000L
 
-    private val hilo = Executors.newSingleThreadExecutor()
-    private val principal = Handler(Looper.getMainLooper())
+    // Perezosos a propósito: son piezas de Android, y crearlas al cargar la
+    // clase impide probar la comparación de versiones fuera de un móvil.
+    private val hilo by lazy { Executors.newSingleThreadExecutor() }
+    private val principal by lazy { Handler(Looper.getMainLooper()) }
 
     /** Comprueba y, si hay novedad, lo dice. Nunca molesta más de una vez al día. */
     fun comprobar(contexto: Context, siempre: Boolean = false) {
