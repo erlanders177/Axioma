@@ -71,6 +71,12 @@ jobs:
           cp "$ruta" "$RUNNER_TEMP/Axioma-nativa.apk"
           echo "ruta=$RUNNER_TEMP/Axioma-nativa.apk" >> "$GITHUB_OUTPUT"
 
+      - name: Comprobar que va firmado
+        run: |
+          herramientas=$(ls -d "$ANDROID_HOME"/build-tools/* | tail -1)
+          "$herramientas/apksigner" verify --print-certs "$RUNNER_TEMP/Axioma-nativa.apk"
+          echo "El APK está firmado."
+
       - uses: actions/upload-artifact@v4
         with:
           name: Axioma-nativa

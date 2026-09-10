@@ -24,6 +24,19 @@ android {
         }
     }
 
+    // Antes de buildTypes a propósito: ahí se busca por nombre, y si todavía
+    // no existe se obtiene null sin protestar. El APK sale sin firmar, y sin
+    // firma Android no lo instala.
+    val almacen = System.getenv("ANDROID_KEYSTORE_FILE")
+    if (almacen != null && file(almacen).exists()) {
+        signingConfigs.create("release") {
+            storeFile = file(almacen)
+            storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            keyAlias = "axioma"
+            keyPassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -39,18 +52,6 @@ android {
     buildFeatures {
         viewBinding = true
         buildConfig = true
-    }
-
-    // La clave de firma sólo existe al publicar; en un clon cualquiera se
-    // compila igual, sin firmar.
-    val almacen = System.getenv("ANDROID_KEYSTORE_FILE")
-    if (almacen != null) {
-        signingConfigs.create("release") {
-            storeFile = file(almacen)
-            storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
-            keyAlias = "axioma"
-            keyPassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
-        }
     }
 }
 
