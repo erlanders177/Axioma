@@ -439,3 +439,28 @@ button.plano.destacado {
   font-size: 12px;
 }
 @media (max-height: 700px) { .presentacion { display: none; } }
+
+/* ------------------------------------------------ teclado del sistema -- */
+
+/* El botón para pedir el teclado del móvil, dentro de la pantalla de la
+   calculadora: sólo aparece donde se escribe con el dedo. */
+.pantalla { position: relative; }
+.pantalla .teclado-sistema {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  min-height: 32px;
+  min-width: 38px;
+  padding: 0 8px;
+  font-size: 15px;
+  opacity: .65;
+}
+.pantalla .teclado-sistema[aria-pressed="true"] {
+  opacity: 1;
+  border-color: var(--acento);
+  color: var(--acento);
+}
+
+/* Con el teclado del móvil abierto, las pestañas sobran: lo que hace falta es
+   ver lo que se está escribiendo. */
+body.teclado-abierto .menu { display: none; }

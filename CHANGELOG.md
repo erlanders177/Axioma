@@ -4,6 +4,40 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ---
 
+## 4.4.0
+
+El teclado del móvil deja de estorbar.
+
+### En la calculadora no sale
+
+La calculadora ya trae su propio teclado, con `sin`, `cos`, `√` y `π`. Encima
+de él el móvil sacaba **el suyo**, que ocupa media pantalla y tapa justo las
+teclas que se iban a usar. Y como cada pulsación devolvía el foco al campo, el
+teclado del sistema reaparecía una y otra vez.
+
+Ahora ese campo va en **sólo lectura** mientras se escribe con el dedo, que es
+lo único que impide el teclado del sistema en todos los navegadores —con
+`inputmode` no basta en algunos—. Las teclas de la aplicación siguen
+escribiendo con normalidad.
+
+Para un nombre de variable o una expresión larga, el teclado del móvil está a
+un toque: el botón **⌨** de la pantalla lo activa, y vuelve a apagarlo.
+
+En el ordenador no cambia nada: allí no hay teclado en pantalla que tapar y el
+campo se escribe con el teclado de siempre.
+
+### Donde sí hace falta, molesta menos
+
+En la barra de cálculo o en los datos de una figura el teclado es necesario.
+Mientras está abierto:
+
+- **se apartan las pestañas de abajo**, que son lo único prescindible en ese
+  momento, y
+- el campo en el que se escribe **se lleva a la vista**, en vez de quedarse
+  debajo del teclado.
+
+---
+
 ## 4.3.0
 
 Que se comporte como una aplicación, no como una instalación cada vez.

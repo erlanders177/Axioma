@@ -23,7 +23,7 @@ const APARTADOS = [
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js";
 
 //: Se muestra en la cabecera. Debe subir en cada publicación.
-const VERSION = "4.3.0";
+const VERSION = "4.4.0";
 
 //: La aplicación de Android, adjunta a la última versión publicada. Es la
 //: salida para los navegadores que no ofrecen instalación automática.
@@ -42,6 +42,9 @@ const estado = {
   fases: {},
   abiertos: new Set(["calculadora"]),
   movil: () => window.matchMedia("(max-width: 859px)").matches,
+  //: Con el dedo, el navegador saca su propio teclado en cuanto se enfoca un
+  //: campo. En la calculadora eso tapa el teclado que ya trae la aplicación.
+  tactil: () => window.matchMedia("(pointer: coarse)").matches,
   modo: "DEG",
 };
 
@@ -241,6 +244,7 @@ function montar() {
   prepararBarra();
   prepararTema();
   prepararInstalacion();
+  vigilarElTecladoDelSistema();
   // La versión, a la vista: sin ella no hay forma de saber si el móvil está
   // usando la copia guardada de hace tres días o la de verdad.
   $("#version").textContent = "web · v" + VERSION;
@@ -309,8 +313,44 @@ function montarCalculadora(seccion) {
   entrada.id = "calc-entrada";
   entrada.placeholder = "0";
   entrada.autocomplete = "off";
+  entrada.autocapitalize = "off";
+  entrada.spellcheck = false;
+
+  // Aquí se escribe con el teclado de la aplicación, que tiene sin, cos, √ y
+  // π. Sacar además el del sistema tapa media pantalla —el propio teclado
+  // incluido— y estorba más de lo que ayuda. `readonly` es lo único que lo
+  // impide en todos los navegadores; `inputmode` solo no basta en algunos.
+  const conTecladoPropio = estado.tactil();
+  if (conTecladoPropio) {
+    entrada.readOnly = true;
+    entrada.inputMode = "none";
+  }
+
   const previa = crear("div", "previa");
   pantalla.append(entrada, previa);
+
+  // Para nombres de variables o expresiones largas, el teclado del sistema
+  // sigue estando a un toque.
+  if (conTecladoPropio) {
+    const abrirTeclado = crear("button", "plano teclado-sistema", "⌨");
+    abrirTeclado.id = "btn-teclado";
+    abrirTeclado.type = "button";
+    abrirTeclado.title = "Escribir con el teclado del móvil";
+    abrirTeclado.setAttribute("aria-pressed", "false");
+    abrirTeclado.onclick = () => {
+      const activar = entrada.readOnly;
+      entrada.readOnly = !activar;
+      entrada.inputMode = activar ? "text" : "none";
+      abrirTeclado.setAttribute("aria-pressed", String(activar));
+      if (activar) {
+        entrada.focus();
+        entrada.setSelectionRange(entrada.value.length, entrada.value.length);
+      } else {
+        entrada.blur();
+      }
+    };
+    pantalla.append(abrirTeclado);
+  }
 
   const modo = crear("select");
   for (const m of ["DEG — grados", "RAD — radianes", "GRAD — gradianes"]) {
@@ -360,7 +400,10 @@ function pulsar(entrada, orden, previa, clave) {
     entrada.value += orden;
   }
   actualizarPrevia(entrada, previa);
-  entrada.focus();
+
+  // Enfocar reabre el teclado del sistema en el móvil, que es justo lo que se
+  // quiere evitar. Con el ratón sí conviene, para poder seguir escribiendo.
+  if (!estado.tactil() || !entrada.readOnly) entrada.focus();
 }
 
 function actualizarPrevia(entrada, previa) {
@@ -949,6 +992,39 @@ function abrirDialogoDeInstalacion(dialogo, cuerpo, peticion) {
 
   if (typeof dialogo.showModal === "function") dialogo.showModal();
   else dialogo.setAttribute("open", "");        // navegadores sin <dialog> modal
+}
+
+/* --------------------------------------------------- teclado del sistema -- */
+
+/* Cuando el teclado del móvil sí hace falta —la barra, los datos de una
+ * figura— ocupa media pantalla. Si además siguen ahí las pestañas de abajo y
+ * la barra de cálculo, lo que se está escribiendo queda apretado contra el
+ * teclado o directamente tapado.
+ *
+ * Así que mientras está abierto se quitan las pestañas, que son lo único
+ * prescindible en ese momento, y el campo se lleva a la vista.
+ */
+function vigilarElTecladoDelSistema() {
+  const vista = window.visualViewport;
+  if (vista) {
+    const ajustar = () => {
+      // Si lo visible es bastante menor que la ventana, hay un teclado encima.
+      const tapado = window.innerHeight - vista.height;
+      document.body.classList.toggle("teclado-abierto", tapado > 150);
+    };
+    vista.addEventListener("resize", ajustar);
+    ajustar();
+  }
+
+  document.addEventListener("focusin", (evento) => {
+    const campo = evento.target;
+    if (!(campo instanceof HTMLInputElement) || campo.readOnly) return;
+    if (!estado.tactil()) return;
+    // Un respiro para que el navegador termine de hacerle sitio al teclado.
+    setTimeout(() => {
+      campo.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 250);
+  });
 }
 
 /* ------------------------------------------------------------ memoria -- */

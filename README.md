@@ -332,7 +332,7 @@ pip install pytest
 python -m pytest tests/ -q
 ```
 
-534 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
+544 pruebas: conversiones contra valores de referencia, ida y vuelta de las 555
 unidades, las 61 figuras contra resultados conocidos, entradas maliciosas
 bloqueadas en el evaluador, resultados de libro comprobados (la serie de Fourier
 de x, la precisión relativa de Euler frente a Runge-Kutta) y los dieciséis

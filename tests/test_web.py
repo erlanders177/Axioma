@@ -100,8 +100,20 @@ def esperar_a_la_aplicacion(pagina, con_motor: bool = True) -> None:
         pagina.wait_for_function("window.__motorListo === true", timeout=ESPERA)
 
 
+def escribir_en_la_calculadora(pagina, texto: str) -> None:
+    """Escribe en la pantalla de la calculadora.
+
+    Con el dedo, ese campo va en sólo lectura para que el navegador no saque su
+    teclado encima del que ya trae la aplicación. Quien quiera teclear pulsa el
+    botón del teclado, que es justo lo que se hace aquí.
+    """
+    if pagina.get_attribute("#calc-entrada", "readonly") is not None:
+        pagina.click("#btn-teclado")
+    pagina.fill("#calc-entrada", texto)
+
+
 def test_arranca_y_calcula(pagina):
-    pagina.fill("#calc-entrada", "2*sin(30)+sqrt(16)")
+    escribir_en_la_calculadora(pagina, "2*sin(30)+sqrt(16)")
     pagina.keyboard.press("Enter")
     assert pagina.input_value("#calc-entrada") == "5"
 
@@ -359,7 +371,7 @@ def test_una_version_nueva_llega_al_navegador(playwright, tmp_path_factory):
         pagina2 = contexto.new_page()
         pagina2.goto(url, wait_until="load")
         esperar_a_la_aplicacion(pagina2)
-        pagina2.fill("#calc-entrada", "2+2")
+        escribir_en_la_calculadora(pagina2, "2+2")
         pagina2.keyboard.press("Enter")
         assert pagina2.input_value("#calc-entrada") == "4"
     finally:
@@ -472,7 +484,7 @@ def test_lo_escrito_antes_de_tiempo_no_se_pierde(navegador, servidor):
     pagina.goto(servidor, wait_until="commit")
     pagina.wait_for_selector("#calc-entrada", timeout=30000)
 
-    pagina.fill("#calc-entrada", "2*sin(30)+sqrt(16)")
+    escribir_en_la_calculadora(pagina, "2*sin(30)+sqrt(16)")
     pagina.keyboard.press("Enter")          # el motor todavía no está
 
     pagina.wait_for_function(
@@ -492,7 +504,7 @@ def test_al_volver_sigue_donde_lo_dejo(navegador, servidor):
     campos = pagina.query_selector_all("#ap-geometria input[data-simbolo]")
     campos[0].fill("7 cm")
     campos[1].fill("3 cm")
-    pagina.fill("#calc-entrada", "123+1")
+    escribir_en_la_calculadora(pagina, "123+1")
 
     # Como cuando el móvil manda la aplicación al fondo.
     pagina.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
@@ -571,4 +583,100 @@ def test_sin_conexion_funciona_entera_sin_haberla_recorrido(navegador, servidor)
         timeout=ESPERA)
     salida = pagina2.text_content("#ap-ecuaciones .salida")
     assert "x1 = 2" in salida and "x2 = 3" in salida, salida
+    contexto.close()
+
+
+# --------------------------------------------------------------------------- #
+# El teclado del móvil
+# --------------------------------------------------------------------------- #
+
+def test_con_el_dedo_no_sale_el_teclado_del_movil_en_la_calculadora(navegador, servidor):
+    """La calculadora ya trae su teclado; el del sistema sólo lo tapa.
+
+    Un campo de texto normal hace que el navegador saque su teclado en cuanto
+    se toca, y en un móvil eso es media pantalla encima de las teclas de la
+    aplicación. `readonly` es lo único que lo impide en todos los navegadores.
+    """
+    contexto = navegador.new_context(
+        viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
+    pagina = contexto.new_page()
+    pagina.goto(servidor, wait_until="load")
+    esperar_a_la_aplicacion(pagina)
+
+    assert pagina.get_attribute("#calc-entrada", "readonly") is not None
+    assert pagina.get_attribute("#calc-entrada", "inputmode") == "none"
+
+    # Y con todo, se escribe: las teclas de la aplicación siguen funcionando.
+    for tecla in ("7", "+", "8"):
+        pagina.click(f"#ap-calculadora .teclado button:text-is('{tecla}')")
+    assert pagina.input_value("#calc-entrada") == "7+8"
+
+    pagina.click("#ap-calculadora .teclado button.igual")
+    assert pagina.input_value("#calc-entrada") == "15"
+    contexto.close()
+
+
+def test_el_teclado_del_movil_esta_a_un_toque_si_hace_falta(navegador, servidor):
+    """Para un nombre de variable hay que poder teclear."""
+    contexto = navegador.new_context(
+        viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
+    pagina = contexto.new_page()
+    pagina.goto(servidor, wait_until="load")
+    esperar_a_la_aplicacion(pagina)
+
+    pagina.click("#btn-teclado")
+    assert pagina.get_attribute("#calc-entrada", "readonly") is None
+    assert pagina.get_attribute("#calc-entrada", "inputmode") == "text"
+
+    pagina.fill("#calc-entrada", "lado = 4")
+    pagina.keyboard.press("Enter")
+    pagina.wait_for_function(
+        "document.querySelector('#btn-variables').textContent.includes('1')",
+        timeout=30000)
+
+    # Y se puede volver a dejarlo quieto.
+    pagina.click("#btn-teclado")
+    assert pagina.get_attribute("#calc-entrada", "readonly") is not None
+    contexto.close()
+
+
+def test_con_raton_la_calculadora_se_escribe_con_el_teclado(navegador, servidor):
+    """En un ordenador no hay teclado en pantalla que tapar."""
+    contexto = navegador.new_context(viewport={"width": 1280, "height": 800})
+    pagina = contexto.new_page()
+    pagina.goto(servidor, wait_until="load")
+    esperar_a_la_aplicacion(pagina)
+
+    assert pagina.get_attribute("#calc-entrada", "readonly") is None
+    assert pagina.locator("#btn-teclado").count() == 0
+    pagina.fill("#calc-entrada", "6*7")
+    pagina.keyboard.press("Enter")
+    assert pagina.input_value("#calc-entrada") == "42"
+    contexto.close()
+
+
+def test_con_el_teclado_abierto_se_quitan_las_pestanas(navegador, servidor):
+    """Con el teclado encima, las pestañas son lo único prescindible."""
+    contexto = navegador.new_context(
+        viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
+    pagina = contexto.new_page()
+    pagina.goto(servidor, wait_until="load")
+    esperar_a_la_aplicacion(pagina)
+
+    assert pagina.is_visible("#menu")
+
+    # Como cuando el teclado se come la mitad de abajo de la pantalla.
+    pagina.evaluate("""() => {
+        Object.defineProperty(window.visualViewport, 'height',
+                              { value: window.innerHeight - 320, configurable: true });
+        window.visualViewport.dispatchEvent(new Event('resize'));
+    }""")
+    assert pagina.is_hidden("#menu"), "las pestañas deberían apartarse"
+
+    pagina.evaluate("""() => {
+        Object.defineProperty(window.visualViewport, 'height',
+                              { value: window.innerHeight, configurable: true });
+        window.visualViewport.dispatchEvent(new Event('resize'));
+    }""")
+    assert pagina.is_visible("#menu"), "y volver al cerrarse"
     contexto.close()
