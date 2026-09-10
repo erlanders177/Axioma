@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La «A» de Axioma: la misma marca que el icono de Windows y el de la web. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:strokeColor="#4A9EFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M38,72 L54,36 L70,72" />
+    <path
+        android:strokeColor="#4A9EFF"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:pathData="M44,61 L64,61" />
+    <path
+        android:fillColor="#8FB8FF"
+        android:pathData="M48,80 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0" />
+    <path
+        android:fillColor="#8FB8FF"
+        android:pathData="M56,80 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0" />
+    <path
+        android:fillColor="#8FB8FF"
+        android:pathData="M64,80 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0" />
+</vector>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Los mismos colores que la versión de escritorio y la web. -->
+<resources>
+    <color name="fondo">#0D1117</color>
+    <color name="panel">#161B26</color>
+    <color name="panel_alto">#1D2432</color>
+    <color name="borde">#273041</color>
+    <color name="texto">#E6EDF3</color>
+    <color name="suave">#8B98AC</color>
+    <color name="acento">#4A9EFF</color>
+    <color name="error">#FF6B6B</color>
+</resources>

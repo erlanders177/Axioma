@@ -1,0 +1,114 @@
+# Compila la aplicación nativa de Android y la prueba en un emulador.
+#
+# Aquí y no en el portátil porque el runner ya trae el JDK y el SDK de Android;
+# instalarlos en local serían un par de gigas para el mismo APK.
+
+name: android
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "android/**"
+      - "src/core/**"
+      - "web/puente.py"
+      - "tools/preparar_android.py"
+      - ".github/workflows/android.yml"
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      etiqueta:
+        description: "Etiqueta de la versión a la que adjuntar el APK"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Copiar el núcleo dentro de la aplicación
+        run: python tools/preparar_android.py
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Preparar la clave de firma
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+        run: |
+          if [ -n "$KEYSTORE" ]; then
+            echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/axioma.keystore"
+            echo "clave lista"
+          else
+            echo "sin clave: el APK saldrá sin firmar"
+          fi
+
+      - name: Compilar
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/axioma.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: gradle --no-daemon assembleRelease
+
+      - name: Buscar el APK
+        id: apk
+        run: |
+          ruta=$(find android/app/build/outputs/apk -name "*.apk" | head -1)
+          echo "Encontrado: $ruta ($(du -h "$ruta" | cut -f1))"
+          cp "$ruta" "$RUNNER_TEMP/Axioma-nativa.apk"
+          echo "ruta=$RUNNER_TEMP/Axioma-nativa.apk" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Axioma-nativa
+          path: ${{ steps.apk.outputs.ruta }}
+
+  probar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Copiar el núcleo dentro de la aplicación
+        run: python tools/preparar_android.py
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # La aceleración por hardware del emulador necesita este permiso.
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Probar el núcleo dentro de un Android de verdad
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: default
+          disable-animations: true
+          working-directory: android
+          script: gradle --no-daemon connectedDebugAndroidTest
