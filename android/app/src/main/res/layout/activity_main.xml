@@ -1,16 +1,105 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/fondo"
-    android:padding="16dp">
+    android:background="@color/fondo">
 
-    <TextView
-        android:id="@+id/estado"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@color/panel"
+        android:padding="12dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textColor="@color/texto"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/version"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:textColor="@color/suave"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btn_variables"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="x="
+            android:textAllCaps="false"
+            android:textColor="@color/texto" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/aviso_motor"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#1E3A5F"
+        android:gravity="center"
+        android:padding="7dp"
         android:textColor="@color/texto"
-        android:textSize="18sp"
+        android:textSize="13sp"
         android:text="@string/preparando" />
+
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/pestanas"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/panel"
+        app:tabMode="scrollable"
+        app:tabIndicatorColor="@color/acento"
+        app:tabTextColor="@color/suave"
+        app:tabSelectedTextColor="@color/acento" />
+
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/apartados"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@color/panel"
+        android:padding="8dp">
+
+        <EditText
+            android:id="@+id/barra_entrada"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="@string/cuenta_rapida"
+            android:imeOptions="actionDone"
+            android:inputType="text"
+            android:maxLines="1"
+            android:background="@drawable/fondo_campo"
+            android:padding="10dp"
+            android:textColor="@color/texto"
+            android:textColorHint="@color/suave"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/barra_resultado"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:maxWidth="140dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="@color/acento"
+            android:textSize="14sp" />
+    </LinearLayout>
 </LinearLayout>

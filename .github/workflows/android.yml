@@ -61,7 +61,7 @@ jobs:
         env:
           ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/axioma.keystore
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-        run: gradle --no-daemon assembleRelease
+        run: gradle --no-daemon testReleaseUnitTest assembleRelease
 
       - name: Buscar el APK
         id: apk

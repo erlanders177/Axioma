@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">Axioma</string>
     <string name="preparando">Preparando el motor de cálculo…</string>
+    <string name="cuenta_rapida">Cuenta rápida: 5*sin(30)</string>
 </resources>
