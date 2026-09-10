@@ -4,7 +4,6 @@ import android.graphics.Typeface
 import android.view.Gravity
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.EditText
-import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
@@ -83,13 +82,23 @@ class CalculadoraFragment : ApartadoFragment() {
         raiz.addView(fila)
 
         // -- teclado --------------------------------------------------------- //
-        val teclado = GridLayout(contexto)
-        teclado.columnCount = 5
-        teclado.useDefaultMargins = true
-        for ((rotulo, orden) in teclas) {
-            teclado.addView(tecla(rotulo, orden))
+        //
+        // Filas con pesos y no una rejilla: con GridLayout, los márgenes que
+        // añade por su cuenta se suman al ancho y la última columna se sale de
+        // la pantalla en los móviles estrechos.
+        for (fila5 in teclas.chunked(5)) {
+            val filaTeclas = LinearLayout(contexto)
+            filaTeclas.orientation = LinearLayout.HORIZONTAL
+            val parametros = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            parametros.topMargin = Piezas.puntos(contexto, 7)
+            filaTeclas.layoutParams = parametros
+
+            for ((rotulo, orden) in fila5) filaTeclas.addView(tecla(rotulo, orden))
+            raiz.addView(filaTeclas)
         }
-        raiz.addView(teclado)
     }
 
     private fun tecla(rotulo: String, orden: String): TextView {
@@ -113,10 +122,9 @@ class CalculadoraFragment : ApartadoFragment() {
         )
         if (orden == "#calcular") vista.setTypeface(null, Typeface.BOLD)
 
-        val parametros = GridLayout.LayoutParams()
-        parametros.width = 0
-        parametros.height = Piezas.puntos(contexto, 52)
-        parametros.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+        val parametros = LinearLayout.LayoutParams(0, Piezas.puntos(contexto, 52), 1f)
+        parametros.marginStart = Piezas.puntos(contexto, 3)
+        parametros.marginEnd = Piezas.puntos(contexto, 3)
         vista.layoutParams = parametros
 
         vista.isClickable = true

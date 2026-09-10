@@ -2,6 +2,7 @@ package io.github.erlanders177.axioma
 
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.action.ViewActions.scrollTo
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.withTagValue
 import androidx.test.espresso.matcher.ViewMatchers.withText
@@ -27,10 +28,12 @@ class InterfazTest {
     @Test
     fun elTecladoDeLaAplicacionCalcula() {
         esperarAlMotor()
-        onView(withText("7")).perform(click())
-        onView(withText("+")).perform(click())
-        onView(withText("8")).perform(click())
-        onView(withText("=")).perform(click())
+        // scrollTo antes de cada pulsación: Espresso se niega a tocar una
+        // tecla que no esté del todo a la vista, y el teclado queda abajo.
+        onView(withText("7")).perform(scrollTo(), click())
+        onView(withText("+")).perform(scrollTo(), click())
+        onView(withText("8")).perform(scrollTo(), click())
+        onView(withText("=")).perform(scrollTo(), click())
         Thread.sleep(1500)
         onView(withTagValue(equalTo("pantalla" as Any)))
             .check(matches(withText("15")))
