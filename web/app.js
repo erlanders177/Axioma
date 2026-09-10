@@ -18,8 +18,12 @@ const APARTADOS = [
   { clave: "bases",        icono: "01", titulo: "Bases" },
 ];
 
+//: El motor de Python. La versión va en la dirección, así que el archivo
+//: guardado nunca se queda viejo.
+const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js";
+
 //: Se muestra en la cabecera. Debe subir en cada publicación.
-const VERSION = "4.2.0";
+const VERSION = "4.3.0";
 
 //: La aplicación de Android, adjunta a la última versión publicada. Es la
 //: salida para los navegadores que no ofrecen instalación automática.
@@ -33,6 +37,9 @@ const estado = {
   py: null,
   puente: null,
   sympyCargado: false,
+  listo: false,
+  pendientes: [],
+  fases: {},
   abiertos: new Set(["calculadora"]),
   movil: () => window.matchMedia("(max-width: 859px)").matches,
   modo: "DEG",
@@ -48,36 +55,77 @@ const crear = (etiqueta, clase, texto) => {
 
 /* ------------------------------------------------------------- arranque -- */
 
-async function arrancar() {
-  const estadoCarga = $("#estado-carga");
-  const progreso = $("#barra-progreso");
-  const paso = (texto, porcentaje) => {
-    estadoCarga.textContent = texto;
-    progreso.style.width = porcentaje + "%";
-  };
+/* La interfaz se monta **antes** que el motor de cálculo.
+ *
+ * Antes se esperaba a Pyodide con una pantalla de carga a pantalla completa que
+ * decía «descargando Python entero». Aunque no descargara nada —a partir de la
+ * segunda vez sale todo de la caché— eran cinco segundos de cartel de
+ * instalación cada vez que se abría la aplicación. Parecía que se reinstalaba.
+ *
+ * Ahora se ve la calculadora al momento y el motor arranca por detrás. Lo que
+ * necesita Python espera su turno con `cuandoListo`.
+ */
 
-  // Un aviso si tarda: en una conexión lenta son varios megas y una pantalla
-  // quieta se confunde con una que no funciona.
+/** Ejecuta algo en cuanto el motor esté listo. Si ya lo está, ahora mismo. */
+function cuandoListo(tarea) {
+  if (estado.listo) {
+    tarea();
+    return;
+  }
+  estado.pendientes.push(tarea);
+  window.__pend = estado.pendientes.length;
+}
+
+function motorListo() {
+  estado.listo = true;
+  // Señal para las pruebas y para quien quiera saber desde fuera si ya se
+  // puede calcular: la interfaz aparece antes que el motor.
+  window.__motorListo = true;
+  document.dispatchEvent(new Event("axioma:motor-listo"));
+  const tareas = estado.pendientes.splice(0);
+  for (const tarea of tareas) {
+    try {
+      tarea();
+    } catch (e) {
+      console.error("tarea pendiente:", e);
+    }
+  }
+  document.body.classList.remove("preparando");
+  $("#aviso-motor").hidden = true;
+}
+
+function avisarDelMotor(texto, error = false) {
+  const aviso = $("#aviso-motor");
+  aviso.hidden = false;
+  aviso.textContent = texto;
+  aviso.classList.toggle("error", error);
+}
+
+async function arrancar() {
+  // Lo primero, la interfaz: es lo que convierte esto en una aplicación que
+  // abre al instante en lugar de en una página que se instala cada vez.
+  montar();
+  restaurarEstado();
+  $("#cargando").classList.add("listo");
+  document.body.classList.add("preparando");
+  avisarDelMotor("Preparando el motor de cálculo…");
+
+  // Que el navegador no borre lo guardado. Sin esto puede desalojar la caché
+  // cuando le falte espacio, y entonces sí habría que descargarlo todo otra vez.
+  asegurarAlmacenamiento();
+
   const lento = setTimeout(() => {
-    const nota = document.createElement("p");
-    nota.className = "pista";
-    nota.textContent = "Está tardando más de lo normal. Son unos 15 MB la " +
-      "primera vez; con mala cobertura puede llevar un par de minutos.";
-    $("#estado-carga").after(nota);
+    avisarDelMotor("Está tardando más de lo normal. La primera vez son unos " +
+                   "15 MB; con mala cobertura puede llevar un par de minutos.");
   }, 25000);
 
   try {
-    if (typeof loadPyodide !== "function") {
-      throw new Error(
-        "no se pudo descargar el motor de Python. Compruebe la conexión, y " +
-        "si está en una red con filtros (trabajo, universidad) pruebe con los " +
-        "datos del móvil: se descarga de cdn.jsdelivr.net."
-      );
-    }
-    paso("Descargando Python…", 20);
+    const marca = (n) => { estado.fases[n] = Math.round(performance.now()); };
+    await cargarElMotor();
+    marca('script');
     estado.py = await loadPyodide();
+    marca('pyodide');
 
-    paso("Copiando el núcleo de Axioma…", 60);
     const nucleo = await (await fetch("nucleo.json", { cache: "no-cache" })).json();
     const creados = new Set();
     for (const [ruta, codigo] of Object.entries(nucleo)) {
@@ -89,7 +137,6 @@ async function arrancar() {
       estado.py.FS.writeFile("/home/pyodide/" + ruta, codigo);
     }
 
-    paso("Comprobando que todo responde…", 85);
     // Un despachador en Python: desde JavaScript, un módulo no se puede
     // recorrer por nombre, pero una función sí se llama sin más.
     estado.py.runPython(`
@@ -101,33 +148,67 @@ def _despachar(nombre, *args):
     return getattr(puente, nombre)(*args)
 `);
     estado.puente = estado.py.globals.get("_despachar");
+    marca("nucleo");
 
-    // Una cuenta de verdad antes de dar por buena la carga: si el núcleo no
-    // funciona, es mejor saberlo aquí que a la primera tecla del usuario.
-    const prueba = llamar("calcular", "2+2");
+    // Una cuenta de verdad antes de darlo por bueno: si el núcleo no funciona,
+    // es mejor saberlo aquí que a la primera tecla del usuario.
+    const prueba = JSON.parse(estado.puente("calcular", "2+2"));
     if (!prueba.ok || prueba.datos.texto !== "4") {
       throw new Error("el núcleo no devuelve resultados correctos");
     }
 
-    paso("Listo", 100);
+    marca('listo');
+    window.__fases = estado.fases;
     clearTimeout(lento);
-    $("#cargando").classList.add("listo");
-    montar();
+    motorListo();
+    guardarloTodoDeFondo();
   } catch (e) {
     clearTimeout(lento);
-    estadoCarga.innerHTML =
-      '<span class="error">No se pudo arrancar: ' + e.message + "</span>";
-    progreso.style.width = "100%";
-    const reintentar = document.createElement("button");
-    reintentar.className = "accion";
-    reintentar.textContent = "Reintentar";
-    reintentar.onclick = () => location.reload();
-    estadoCarga.after(reintentar);
+    document.body.classList.remove("preparando");
+    avisarDelMotor("No se pudo arrancar el motor: " + e.message + " · Toque para reintentar", true);
+    $("#aviso-motor").onclick = () => location.reload();
   }
+}
+
+/** Trae el JavaScript del motor, ya con la interfaz a la vista. */
+function cargarElMotor() {
+  if (typeof loadPyodide === "function") return Promise.resolve();
+  return new Promise((cumplir, fallar) => {
+    const script = document.createElement("script");
+    script.src = PYODIDE;
+    script.onload = () => cumplir();
+    script.onerror = () => fallar(new Error(
+      "no se pudo descargar el motor de Python. Compruebe la conexión, y si " +
+      "está en una red con filtros (trabajo, universidad) pruebe con los " +
+      "datos del móvil: se descarga de cdn.jsdelivr.net."
+    ));
+    document.head.append(script);
+  });
+}
+
+/** Pide que lo guardado sea permanente, para no volver a descargar nunca. */
+async function asegurarAlmacenamiento() {
+  try {
+    if (!navigator.storage?.persist) return;
+    if (await navigator.storage.persisted()) return;
+    await navigator.storage.persist();
+  } catch {
+    // Si el navegador no lo concede, se sigue igual: sólo significa que en
+    // algún apuro de espacio podría borrar la caché.
+  }
+}
+
+/** Guarda el resto de la aplicación por detrás, sin que nadie espere. */
+function guardarloTodoDeFondo() {
+  navigator.serviceWorker?.controller?.postMessage({ tipo: "guardar-todo" });
 }
 
 /** Llama a una función del puente y devuelve el objeto ya interpretado. */
 function llamar(funcion, ...args) {
+  if (!estado.puente) {
+    return { ok: false, esperando: true,
+             error: "El motor de cálculo todavía se está preparando…" };
+  }
   try {
     return JSON.parse(estado.puente(funcion, ...args));
   } catch (e) {
@@ -138,8 +219,6 @@ function llamar(funcion, ...args) {
 /** sympy pesa varios segundos: se descarga la primera vez que hace falta. */
 async function asegurarSympy() {
   if (estado.sympyCargado) return;
-  const aviso = crear("div", "pista", "Descargando sympy (sólo la primera vez)…");
-  $("#ap-ecuaciones .salida")?.replaceChildren(aviso);
   await estado.py.loadPackage("sympy");
   estado.sympyCargado = true;
 }
@@ -259,6 +338,13 @@ function pulsar(entrada, orden, previa, clave) {
   if (orden === "#limpiar") { entrada.value = ""; previa.textContent = ""; return; }
   if (orden === "#borrar") { entrada.value = entrada.value.slice(0, -1); }
   else if (orden === "#calcular") {
+    // Se puede escribir mientras el motor arranca: el cálculo se atiende en
+    // cuanto esté, en vez de perderse con un error.
+    if (!estado.listo) {
+      previa.textContent = "Preparando el motor…";
+      cuandoListo(() => pulsar(entrada, "#calcular", previa, clave));
+      return;
+    }
     const r = llamar("calcular", entrada.value, estado.modo);
     if (r.ok) {
       anotar(clave, entrada.value + " = " + r.datos.texto, entrada.value);
@@ -286,15 +372,19 @@ function actualizarPrevia(entrada, previa) {
 
 function montarConversiones(seccion) {
   const categoria = crear("select");
-  const grupos = llamar("categorias");
-  if (grupos.ok) {
+  // Las 51 magnitudes las enumera el núcleo, así que esta parte espera; el
+  // resto del apartado ya está a la vista mientras tanto.
+  cuandoListo(() => {
+    const grupos = llamar("categorias");
+    if (!grupos.ok) return;
     for (const { grupo, nombres } of grupos.datos) {
       const bloque = crear("optgroup");
       bloque.label = grupo;
       for (const nombre of nombres) bloque.append(new Option(nombre, nombre));
       categoria.append(bloque);
     }
-  }
+    cargarUnidades();
+  });
 
   const valor = crear("input");
   valor.value = "1";
@@ -336,15 +426,15 @@ function montarConversiones(seccion) {
 
   seccion.append(rotulo("Magnitud"), categoria, rotulo("Valor"), valor,
                  rotulo("De"), origen, rotulo("A"), destino, salida, tabla, guardar);
-  cargarUnidades();
 }
 
 /* ----------------------------------------------------------- geometría -- */
 
 function montarGeometria(seccion) {
   const figura = crear("select");
-  const lista = llamar("lista_figuras");
-  if (lista.ok) {
+  cuandoListo(() => {
+    const lista = llamar("lista_figuras");
+    if (!lista.ok) return;
     const porGrupo = {};
     for (const f of lista.datos) (porGrupo[f.grupo] ||= []).push(f.nombre);
     for (const [grupo, nombres] of Object.entries(porGrupo)) {
@@ -353,7 +443,8 @@ function montarGeometria(seccion) {
       for (const nombre of nombres) bloque.append(new Option(nombre, nombre));
       figura.append(bloque);
     }
-  }
+    cargar();
+  });
 
   const campos = crear("div");
   const resultados = crear("div", "resultados");
@@ -400,7 +491,6 @@ function montarGeometria(seccion) {
   figura.onchange = cargar;
   calcular.onclick = () => hacer(true);
   seccion.append(rotulo("Figura"), figura, campos, calcular, resultados, formulas);
-  cargar();
 }
 
 /* ---------------------------------------------------------- ecuaciones -- */
@@ -538,7 +628,7 @@ function montarCombinatoria(seccion) {
   seccion.append(rotulo("Operación"), operacion, rotulo("n"), n, etiquetaR, r,
                  boton, salida);
   ajustar();
-  hacer();
+  cuandoListo(hacer);
 }
 
 /* --------------------------------------------------------------- bases -- */
@@ -562,7 +652,7 @@ function montarBases(seccion) {
   entrada.oninput = hacer;
   base.onchange = hacer;
   seccion.append(rotulo("Número"), entrada, rotulo("Base de partida"), base, tabla);
-  hacer();
+  cuandoListo(hacer);
 }
 
 /* --------------------------------------------------- piezas compartidas -- */
@@ -618,6 +708,12 @@ function prepararBarra() {
     } else if (e.key === "Enter") {
       const expresion = entrada.value.trim();
       if (!expresion) return;
+      if (!estado.listo) {
+        resultado.textContent = "preparando…";
+        cuandoListo(() => entrada.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter" })));
+        return;
+      }
       const r = llamar("calcular", expresion, estado.modo);
       if (!r.ok) {
         resultado.innerHTML = '<span class="error">' + r.error + "</span>";
@@ -646,6 +742,7 @@ function prepararBarra() {
 }
 
 function refrescarVariables() {
+  if (!estado.listo) return;
   const r = llamar("listar_variables");
   const cantidad = r.ok ? Object.keys(r.datos).length : 0;
   $("#btn-variables").textContent = cantidad ? `x= ${cantidad}` : "x=";
@@ -854,19 +951,132 @@ function abrirDialogoDeInstalacion(dialogo, cuerpo, peticion) {
   else dialogo.setAttribute("open", "");        // navegadores sin <dialog> modal
 }
 
+/* ------------------------------------------------------------ memoria -- */
+
+/* Una aplicación no empieza de cero cada vez que se abre.
+ *
+ * Se guarda lo que se estaba haciendo —el apartado abierto, lo escrito en cada
+ * campo y las variables— y se recupera al volver. Sin esto, cerrar la
+ * aplicación es perder el problema a medias, que es la otra mitad de la
+ * sensación de estar reinstalándola cada vez.
+ */
+
+const MEMORIA = "axioma:estado";
+
+function camposDe(clave) {
+  const seccion = document.getElementById("ap-" + clave);
+  if (!seccion) return null;
+  return {
+    selects: [...seccion.querySelectorAll("select")],
+    entradas: [...seccion.querySelectorAll("input")],
+  };
+}
+
+function recordarEstado() {
+  try {
+    const datos = {
+      abiertos: [...estado.abiertos],
+      modo: estado.modo,
+      apartados: {},
+    };
+    for (const ap of APARTADOS) {
+      const campos = camposDe(ap.clave);
+      if (!campos) continue;
+      datos.apartados[ap.clave] = {
+        selects: campos.selects.map((s) => s.value),
+        entradas: campos.entradas.map((i) => i.value),
+      };
+    }
+    if (estado.listo) {
+      const r = llamar("listar_variables");
+      if (r.ok) datos.variables = r.datos;
+    }
+    localStorage.setItem(MEMORIA, JSON.stringify(datos));
+  } catch {
+    /* sin espacio o en privado: no pasa nada, se abre de cero */
+  }
+}
+
+function restaurarEstado() {
+  let datos;
+  try {
+    datos = JSON.parse(localStorage.getItem(MEMORIA) || "null");
+  } catch {
+    return;
+  }
+  if (!datos) return;
+
+  if (datos.modo) estado.modo = datos.modo;
+  if (Array.isArray(datos.abiertos) && datos.abiertos.length) {
+    const validos = datos.abiertos.filter(
+      (c) => APARTADOS.some((a) => a.clave === c));
+    if (validos.length) {
+      estado.abiertos = new Set(estado.movil() ? [validos[0]] : validos);
+      refrescarMenu();
+    }
+  }
+
+  // Los campos, cuando el motor haya llenado los desplegables: en Geometría la
+  // lista de figuras y sus datos no existen hasta entonces.
+  cuandoListo(() => {
+    for (const [clave, guardado] of Object.entries(datos.apartados || {})) {
+      const campos = camposDe(clave);
+      if (!campos) continue;
+
+      // Primero los desplegables: al cambiarlos se reconstruyen los campos.
+      if (campos.selects.length === guardado.selects?.length) {
+        campos.selects.forEach((select, i) => {
+          const valor = guardado.selects[i];
+          if (valor && [...select.options].some((o) => o.value === valor)) {
+            select.value = valor;
+            select.dispatchEvent(new Event("change"));
+          }
+        });
+      }
+
+      // Y después lo escrito, que ya tiene dónde ponerse.
+      const ahora = camposDe(clave);
+      if (ahora && ahora.entradas.length === guardado.entradas?.length) {
+        ahora.entradas.forEach((entrada, i) => {
+          if (guardado.entradas[i]) entrada.value = guardado.entradas[i];
+        });
+      }
+    }
+
+    for (const [nombre, valor] of Object.entries(datos.variables || {})) {
+      llamar("definir_variable", nombre, valor);
+    }
+    refrescarVariables();
+  });
+}
+
+// `visibilitychange` y no `beforeunload`: en el móvil una aplicación rara vez
+// se cierra, se manda al fondo, y ése es el único aviso que llega seguro.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") recordarEstado();
+});
+window.addEventListener("pagehide", recordarEstado);
+
 window.addEventListener("resize", refrescarMenu);
 
 if ("serviceWorker" in navigator) {
+  // Si ya había uno al abrir, un relevo significa versión nueva. Si no lo
+  // había, el relevo es el de la primera instalación y no hay nada que
+  // estrenar: recargar ahí le arranca la página de las manos a quien acaba de
+  // llegar, y le borra lo que estuviera escribiendo.
+  const yaHabiaControlador = !!navigator.serviceWorker.controller;
+
   window.addEventListener("load", async () => {
     const registro = await navigator.serviceWorker.register("sw.js");
 
-    // Si al volver hay una versión nueva, se recarga una vez para entrar en
-    // ella. Sin esto la pestaña se queda con la anterior hasta que el usuario
-    // cierra todas, y desde fuera parece que la aplicación no se actualiza.
+    // Con una versión nueva se recarga una vez para entrar en ella. Sin esto
+    // la pestaña se queda con la anterior hasta que se cierran todas, y desde
+    // fuera parece que la aplicación no se actualiza.
     let recargando = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (recargando) return;
+      if (!yaHabiaControlador || recargando) return;
       recargando = true;
+      recordarEstado();          // que la actualización no cueste el trabajo
       location.reload();
     });
 

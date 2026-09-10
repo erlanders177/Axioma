@@ -18,7 +18,7 @@
 
 //: Al subirlo se descarta la caché anterior entera. Media aplicación vieja y
 //: media nueva es peor que volver a descargar.
-const CACHE = "axioma-v4";
+const CACHE = "axioma-v6";
 
 const PROPIOS = [
   "./", "./index.html", "./estilo.css", "./app.js",
@@ -71,8 +71,20 @@ self.addEventListener("fetch", (evento) => {
           return respuesta;
         })
         // Sin conexión, lo guardado. Es justo para lo que se guardó.
-        .catch(() => caches.match(peticion, { ignoreVary: true })
-          .then((guardado) => guardado || caches.match("./index.html")))
+        //
+        // `ignoreSearch` no es un detalle: las direcciones llevan una huella
+        // del contenido (`app.js?v=07bd5c4b11`) y en la caché están sin ella,
+        // así que sin esto no se encuentran. Y entonces se servía el index en
+        // su lugar: HTML donde se espera JavaScript, «Unexpected token <», y
+        // la aplicación en blanco sin conexión.
+        .catch(() => caches.match(peticion, { ignoreVary: true, ignoreSearch: true })
+          .then((guardado) => {
+            if (guardado) return guardado;
+            // El index sólo vale para una navegación. Devolverlo donde se
+            // espera un script o una hoja de estilos rompe la página entera.
+            if (peticion.mode === "navigate") return caches.match("./index.html");
+            return Response.error();
+          }))
     );
     return;
   }
@@ -89,4 +101,66 @@ self.addEventListener("fetch", (evento) => {
       });
     })
   );
+});
+
+
+/* --------------------------------------------------------- guardarlo todo -- */
+
+/* Con lo anterior, Pyodide se guarda a medida que se usa. Eso deja una
+ * aplicación a medias: quien nunca abrió Ecuaciones no tiene sympy, y al
+ * quedarse sin cobertura se encuentra con que media calculadora no responde.
+ *
+ * Así que en cuanto la aplicación termina de arrancar pide guardar el resto,
+ * por detrás y sin que nadie espere. A partir de ahí está entera.
+ */
+
+//: De dónde salen los archivos del motor. Lleva la versión dentro, así que
+//: nunca cambia sin cambiar de dirección.
+const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.28.3/full/";
+
+//: Lo que hace falta para que Ecuaciones y Cálculo funcionen sin conexión.
+//: Los nombres exactos salen de pyodide-lock.json, que ya está guardado.
+const PAQUETES = ["sympy", "mpmath"];
+
+async function guardarloTodo() {
+  const cache = await caches.open(CACHE);
+
+  const base = ["pyodide.js", "pyodide.asm.js", "pyodide.asm.wasm",
+                "python_stdlib.zip", "pyodide-lock.json"];
+  await Promise.all(base.map((n) => guardarSiFalta(cache, PYODIDE + n)));
+
+  // El candado dice qué archivo corresponde a cada paquete y de qué depende.
+  try {
+    const respuesta = await cache.match(PYODIDE + "pyodide-lock.json") ||
+                      await fetch(PYODIDE + "pyodide-lock.json");
+    const candado = await respuesta.clone().json();
+    const pendientes = new Set(PAQUETES);
+    const archivos = new Set();
+    for (const nombre of pendientes) {
+      const paquete = candado.packages?.[nombre];
+      if (!paquete) continue;
+      archivos.add(PYODIDE + paquete.file_name);
+      for (const dependencia of paquete.depends || []) pendientes.add(dependencia);
+    }
+    await Promise.all([...archivos].map((u) => guardarSiFalta(cache, u)));
+  } catch (e) {
+    // Que falle esto no rompe nada: sólo significa que sympy se descargará la
+    // primera vez que se abra Ecuaciones, como hasta ahora.
+  }
+}
+
+async function guardarSiFalta(cache, url) {
+  if (await cache.match(url, { ignoreVary: true })) return;
+  try {
+    const respuesta = await fetch(url, { mode: "cors" });
+    if (respuesta.ok) await cache.put(url, respuesta);
+  } catch {
+    /* sin conexión: ya se guardará en otra ocasión */
+  }
+}
+
+self.addEventListener("message", (evento) => {
+  if (evento.data?.tipo === "guardar-todo") {
+    evento.waitUntil(guardarloTodo());
+  }
 });

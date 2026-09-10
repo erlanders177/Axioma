@@ -4,6 +4,57 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ---
 
+## 4.3.0
+
+Que se comporte como una aplicación, no como una instalación cada vez.
+
+### Abre al momento
+
+Abrir Axioma costaba **entre cuatro y cinco segundos de pantalla de carga**,
+con un cartel que decía «descargando Python entero» y una barra de progreso.
+No descargaba nada —a partir de la segunda vez sale todo de lo guardado— pero
+el aspecto era el de una reinstalación, cada vez.
+
+Ahora la calculadora se ve en **medio segundo**, y el motor arranca por detrás
+con un aviso fino que se quita solo. Medido: de 4,7 s a 0,46 s.
+
+Dos cosas lo hacían falta:
+
+- El motor de Python **se carga después de dibujar la interfaz**. Antes venía
+  en una etiqueta normal del HTML, y eran varios megas de JavaScript que había
+  que leer y evaluar antes de que apareciera un solo botón.
+- Lo que necesita Python —las 61 figuras, las 555 unidades— **espera su turno**
+  en vez de retener toda la pantalla.
+
+Y si escribe una cuenta mientras arranca, **no se pierde**: se resuelve en
+cuanto el motor está listo.
+
+### Sigue donde lo dejó
+
+Al volver, la aplicación recupera el apartado en el que estaba, lo escrito en
+cada campo y las variables definidas. Cerrarla ya no cuesta el problema a
+medias.
+
+### Está entera desde el primer momento
+
+Antes se guardaba lo que se iba usando: quien nunca había abierto Ecuaciones no
+tenía sympy y, sin cobertura, se encontraba media calculadora muerta. Ahora, en
+cuanto arranca, pide guardar el resto por detrás.
+
+Además se pide **almacenamiento permanente**, para que el navegador no borre lo
+guardado cuando ande justo de espacio. Ésa era la única forma de que hubiera
+que descargarlo todo otra vez.
+
+### Corregido
+
+- **La primera visita se recargaba sola.** Al instalarse el service worker
+  tomaba el control, y eso disparaba la recarga pensada para las
+  actualizaciones: a quien acababa de llegar se le reiniciaba la página y
+  perdía lo que estuviera escribiendo. Ahora sólo se recarga cuando hay de
+  verdad una versión nueva, y guardando antes el trabajo.
+
+---
+
 ## 4.2.0
 
 Que se pueda encontrar buscando, y no sólo con el enlace exacto.

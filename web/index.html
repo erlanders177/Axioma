@@ -43,7 +43,7 @@
   "downloadUrl": "https://github.com/erlanders177/Axioma/releases/latest",
   "image": "https://erlanders177.github.io/Axioma/social.png",
   "screenshot": "https://erlanders177.github.io/Axioma/social.png",
-  "softwareVersion": "4.1.2",
+  "softwareVersion": "4.3.0",
   "description": "Calculadora científica en español: geometría con 61 figuras, ecuaciones e inecuaciones paso a paso, 555 unidades de conversión, derivadas e integrales, combinatoria y bases numéricas. Funciona sin conexión.",
   "featureList": [
     "Calculadora científica con variables y unidades",
@@ -71,7 +71,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Axioma">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="stylesheet" href="estilo.css?v=1ffcc2dfdb">
+<link rel="stylesheet" href="estilo.css?v=aa6008c7f1">
 
 <!-- Lo primero de todo, antes de cargar nada más.
      El navegador avisa con `beforeinstallprompt` en cuanto decide que la página
@@ -99,6 +99,10 @@
     <button id="btn-tema" class="plano" title="Cambiar entre tema claro y oscuro">◐</button>
   </div>
 </header>
+
+<!-- Aviso mientras arranca el motor de cálculo. Es una franja fina y no una
+     pantalla completa: la aplicación ya se puede ver y tocar mientras tanto. -->
+<div id="aviso-motor" class="aviso-motor" role="status" hidden></div>
 
 <!-- Menú de apartados: barra lateral en el ordenador, pestañas abajo en el móvil -->
 <nav class="menu" id="menu" aria-label="Apartados"></nav>
@@ -158,10 +162,11 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js"
-        onerror="document.getElementById('estado-carga').innerHTML =
-          '<span class=&quot;error&quot;>No se pudo descargar el motor de Python. ' +
-          'Compruebe la conexión y vuelva a cargar la página.</span>'"></script>
-<script src="app.js?v=55d0b0c19e"></script>
+<!-- El motor de Python NO se carga aquí. Cargarlo con una etiqueta normal
+     bloquea el dibujado: son varios megas de JavaScript que hay que leer y
+     evaluar antes de que aparezca un solo botón, y eso son cuatro segundos
+     de pantalla vacía cada vez que se abre. Lo pide app.js cuando la
+     interfaz ya está puesta. -->
+<script src="app.js?v=07bd5c4b11"></script>
 </body>
 </html>

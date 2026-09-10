@@ -129,8 +129,10 @@ Funciona en el móvil y en el ordenador, sin instalar nada.
   Pesa 1,2 MB porque no duplica nada, es una envoltura sobre la misma web.
   Al no venir de Google Play, Android pedirá permiso para instalarlo.
 
-La primera visita descarga Python entero (unos segundos); a partir de ahí
-**funciona sin conexión**. No es una reescritura: dentro del navegador corre el
+**Abre en medio segundo** y **sigue donde lo dejó**: el apartado en el que
+estaba, lo escrito y sus variables. La primera visita descarga Python entero
+(unos segundos); a partir de ahí **funciona sin conexión**, y se guarda entera
+por detrás para que no haya media aplicación muerta cuando falte cobertura. No es una reescritura: dentro del navegador corre el
 mismo `src/core` que la versión de escritorio, con
 [Pyodide](https://pyodide.org/), así que los resultados son los mismos por
 construcción.

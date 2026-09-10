@@ -84,9 +84,20 @@ def pagina(request, navegador, servidor):
     pagina.errores = []                                          # type: ignore[attr-defined]
     pagina.on("pageerror", lambda e: pagina.errores.append(str(e)))
     pagina.goto(servidor, wait_until="load")
-    pagina.wait_for_selector("#menu-calculadora", timeout=ESPERA)
+    esperar_a_la_aplicacion(pagina)
     yield pagina
     contexto.close()
+
+
+def esperar_a_la_aplicacion(pagina, con_motor: bool = True) -> None:
+    """La interfaz aparece antes que el motor: son dos esperas distintas.
+
+    Casi todas las pruebas calculan algo, así que necesitan el motor. Las que
+    miden el arranque miran sólo la interfaz.
+    """
+    pagina.wait_for_selector("#menu-calculadora", timeout=ESPERA)
+    if con_motor:
+        pagina.wait_for_function("window.__motorListo === true", timeout=ESPERA)
 
 
 def test_arranca_y_calcula(pagina):
@@ -226,7 +237,7 @@ def test_firefox_de_android_ofrece_el_apk_y_los_pasos(navegador, servidor):
     )
     pagina = contexto.new_page()
     pagina.goto(servidor, wait_until="load")
-    pagina.wait_for_selector("#menu-calculadora", timeout=ESPERA)
+    esperar_a_la_aplicacion(pagina)
 
     pagina.click("#btn-instalar")
     dialogo = pagina.text_content("#dialogo-instalar")
@@ -252,7 +263,7 @@ def test_el_iphone_recibe_los_pasos_de_safari(navegador, servidor):
     )
     pagina = contexto.new_page()
     pagina.goto(servidor, wait_until="load")
-    pagina.wait_for_selector("#menu-calculadora", timeout=ESPERA)
+    esperar_a_la_aplicacion(pagina)
 
     pagina.click("#btn-instalar")
     dialogo = pagina.text_content("#dialogo-instalar")
@@ -322,7 +333,7 @@ def test_una_version_nueva_llega_al_navegador(playwright, tmp_path_factory):
         contexto = navegador.new_context(viewport={"width": 390, "height": 844})
         pagina = contexto.new_page()
         pagina.goto(url, wait_until="load")
-        pagina.wait_for_selector("#menu-calculadora", timeout=ESPERA)
+        esperar_a_la_aplicacion(pagina)
         pagina.wait_for_function("navigator.serviceWorker.controller !== null",
                                  timeout=60000)
         assert "Calculadora" in pagina.text_content("#menu-calculadora")
@@ -338,7 +349,7 @@ def test_una_version_nueva_llega_al_navegador(playwright, tmp_path_factory):
         _marcar_versiones_en(servida)
 
         pagina.reload(wait_until="load")
-        pagina.wait_for_selector("#menu-calculadora", timeout=ESPERA)
+        esperar_a_la_aplicacion(pagina, con_motor=False)
         assert "NUEVA" in pagina.text_content("#menu-calculadora"), (
             "el navegador se quedó con la versión anterior"
         )
@@ -347,7 +358,7 @@ def test_una_version_nueva_llega_al_navegador(playwright, tmp_path_factory):
         contexto.set_offline(True)
         pagina2 = contexto.new_page()
         pagina2.goto(url, wait_until="load")
-        pagina2.wait_for_selector("#menu-calculadora", timeout=ESPERA)
+        esperar_a_la_aplicacion(pagina2)
         pagina2.fill("#calc-entrada", "2+2")
         pagina2.keyboard.press("Enter")
         assert pagina2.input_value("#calc-entrada") == "4"
@@ -422,3 +433,142 @@ def test_la_imagen_para_compartir_tiene_la_medida_que_esperan():
 
     with Image.open(WEB / "social.png") as imagen:
         assert imagen.size == (1200, 630), imagen.size
+
+
+# --------------------------------------------------------------------------- #
+# Que se comporte como una aplicación y no como una instalación cada vez
+# --------------------------------------------------------------------------- #
+
+def test_la_interfaz_aparece_antes_que_el_motor(navegador, servidor):
+    """Abrir la aplicación no puede costar cinco segundos de pantalla de carga.
+
+    El motor de Python tarda unos segundos en arrancar aunque esté todo
+    guardado. Antes se esperaba a que terminara con un cartel de «descargando
+    Python entero», y cada apertura parecía una reinstalación. Ahora la
+    calculadora se ve y se toca mientras el motor arranca por detrás.
+    """
+    contexto = navegador.new_context(viewport={"width": 390, "height": 844})
+    pagina = contexto.new_page()
+    pagina.goto(servidor, wait_until="commit")
+
+    # El teclado está puesto antes de que el motor conteste.
+    pagina.wait_for_selector("#ap-calculadora .teclado button", timeout=30000)
+    assert not pagina.evaluate("window.__motorListo === true"), (
+        "el motor no debería estar listo tan pronto: la prueba no mide nada"
+    )
+    teclas = pagina.eval_on_selector_all("#ap-calculadora .teclado button", "n => n.length")
+    assert teclas >= 25, teclas
+    assert pagina.is_visible("#aviso-motor"), "hay que avisar de que aún se prepara"
+
+    esperar_a_la_aplicacion(pagina)
+    assert pagina.is_hidden("#aviso-motor"), "el aviso debe irse al estar listo"
+    contexto.close()
+
+
+def test_lo_escrito_antes_de_tiempo_no_se_pierde(navegador, servidor):
+    """Si escribe mientras arranca, se le atiende en cuanto se pueda."""
+    contexto = navegador.new_context(viewport={"width": 390, "height": 844})
+    pagina = contexto.new_page()
+    pagina.goto(servidor, wait_until="commit")
+    pagina.wait_for_selector("#calc-entrada", timeout=30000)
+
+    pagina.fill("#calc-entrada", "2*sin(30)+sqrt(16)")
+    pagina.keyboard.press("Enter")          # el motor todavía no está
+
+    pagina.wait_for_function(
+        "document.querySelector('#calc-entrada').value === '5'", timeout=ESPERA)
+    contexto.close()
+
+
+def test_al_volver_sigue_donde_lo_dejo(navegador, servidor):
+    """Una aplicación no empieza de cero cada vez que se abre."""
+    contexto = navegador.new_context(viewport={"width": 1280, "height": 800})
+    pagina = contexto.new_page()
+    pagina.goto(servidor, wait_until="load")
+    esperar_a_la_aplicacion(pagina)
+
+    pagina.click("#menu-geometria")
+    pagina.select_option("#ap-geometria select", "Cilindro")
+    campos = pagina.query_selector_all("#ap-geometria input[data-simbolo]")
+    campos[0].fill("7 cm")
+    campos[1].fill("3 cm")
+    pagina.fill("#calc-entrada", "123+1")
+
+    # Como cuando el móvil manda la aplicación al fondo.
+    pagina.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+    pagina.evaluate("""() => {
+        Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+        document.dispatchEvent(new Event('visibilitychange'));
+    }""")
+
+    pagina2 = contexto.new_page()
+    pagina2.goto(servidor, wait_until="load")
+    esperar_a_la_aplicacion(pagina2)
+
+    assert pagina2.is_visible("#ap-geometria"), "debería reabrirse en Geometría"
+    assert pagina2.locator("#ap-geometria select").first.input_value() == "Cilindro"
+    valores = pagina2.eval_on_selector_all(
+        "#ap-geometria input[data-simbolo]", "n => n.map(i => i.value)")
+    assert valores[:2] == ["7 cm", "3 cm"], valores
+    assert pagina2.input_value("#calc-entrada") == "123+1"
+    contexto.close()
+
+
+def test_sin_conexion_arranca_aunque_las_direcciones_lleven_huella(navegador, servidor):
+    """Sin conexión tiene que arrancar, no quedarse en blanco.
+
+    Las direcciones de los archivos llevan una huella del contenido
+    (`app.js?v=07bd5c4b11`) y en la caché están sin ella. Sin buscar ignorando
+    esa parte no se encontraban, y en su lugar se servía el index: HTML donde
+    se espera JavaScript, y la aplicación en blanco justo cuando más falta
+    hace, sin cobertura.
+    """
+    contexto = navegador.new_context(viewport={"width": 390, "height": 844})
+    pagina = contexto.new_page()
+    pagina.goto(servidor, wait_until="load")
+    esperar_a_la_aplicacion(pagina)
+    pagina.wait_for_function("navigator.serviceWorker.controller !== null", timeout=60000)
+
+    contexto.set_offline(True)
+    pagina2 = contexto.new_page()
+    errores = []
+    pagina2.on("pageerror", lambda e: errores.append(str(e)))
+    pagina2.goto(servidor, wait_until="load")
+    esperar_a_la_aplicacion(pagina2, con_motor=False)
+
+    assert not errores, errores
+    apartados = pagina2.eval_on_selector_all("#menu button", "n => n.length")
+    assert apartados == 7, apartados
+    contexto.close()
+
+
+def test_sin_conexion_funciona_entera_sin_haberla_recorrido(navegador, servidor):
+    """Guardar sólo lo usado deja media aplicación muerta al quedarse sin red.
+
+    Quien nunca abrió Ecuaciones no tenía sympy guardado, y sin cobertura se
+    encontraba con que esa mitad no respondía. Ahora se guarda todo por detrás
+    en cuanto arranca.
+    """
+    contexto = navegador.new_context(viewport={"width": 390, "height": 844})
+    pagina = contexto.new_page()
+    pagina.goto(servidor, wait_until="load")
+    esperar_a_la_aplicacion(pagina)
+    pagina.wait_for_function("navigator.serviceWorker.controller !== null", timeout=60000)
+
+    # Se le da tiempo a guardar el resto; sólo se ha usado la calculadora.
+    pagina.wait_for_timeout(20000)
+
+    contexto.set_offline(True)
+    pagina2 = contexto.new_page()
+    pagina2.goto(servidor, wait_until="load")
+    esperar_a_la_aplicacion(pagina2)
+
+    pagina2.click("#menu-ecuaciones")
+    pagina2.fill("#ap-ecuaciones input", "x^2 - 5x + 6 = 0")
+    pagina2.click("#ap-ecuaciones button.accion")
+    pagina2.wait_for_function(
+        "document.querySelector('#ap-ecuaciones .salida').textContent.includes('Incógnita')",
+        timeout=ESPERA)
+    salida = pagina2.text_content("#ap-ecuaciones .salida")
+    assert "x1 = 2" in salida and "x2 = 3" in salida, salida
+    contexto.close()

@@ -46,10 +46,31 @@ html, body {
 
 body {
   display: grid;
-  grid-template-rows: auto 1fr auto auto;
-  grid-template-areas: "cabecera" "lienzo" "barra" "menu";
+  grid-template-rows: auto auto 1fr auto auto;
+  grid-template-areas: "cabecera" "aviso" "lienzo" "barra" "menu";
   height: 100dvh;
 }
+
+/* ------------------------------------------------- aviso del motor -- */
+
+/* Una franja fina, no una pantalla de carga: mientras el motor arranca la
+   aplicación ya se ve entera y se puede escribir en ella. */
+.aviso-motor {
+  grid-area: aviso;
+  padding: 7px 14px;
+  background: var(--acento-tenue);
+  color: var(--texto);
+  font-size: 12.5px;
+  text-align: center;
+  border-bottom: 1px solid var(--borde);
+}
+.aviso-motor.error { background: var(--error); color: #fff; cursor: pointer; }
+
+/* Lo que aún no puede responder se ve apagado, para que quede claro que la
+   espera es de un momento y no un error. */
+body.preparando .apartado select,
+body.preparando .apartado .resultados,
+body.preparando .apartado .salida { opacity: .55; }
 
 /* ------------------------------------------------------------- cabecera -- */
 
@@ -333,9 +354,10 @@ button.plano.destacado {
 @media (min-width: 860px) {
   body {
     grid-template-columns: 210px 1fr;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto auto 1fr auto;
     grid-template-areas:
       "cabecera cabecera"
+      "aviso    aviso"
       "menu     lienzo"
       "menu     barra";
   }
