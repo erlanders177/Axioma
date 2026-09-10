@@ -253,7 +253,7 @@ def test_firefox_de_android_ofrece_el_apk_y_los_pasos(navegador, servidor):
 
     pagina.click("#btn-instalar")
     dialogo = pagina.text_content("#dialogo-instalar")
-    assert "Descargar la aplicación (APK)" in dialogo
+    assert "Descargar la aplicación de Android" in dialogo
     assert "Firefox" in dialogo and "tres puntos" in dialogo
 
     # Se intercepta la descarga en vez de bajar el APK de verdad: son megas por

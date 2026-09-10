@@ -464,3 +464,14 @@ button.plano.destacado {
 /* Con el teclado del móvil abierto, las pestañas sobran: lo que hace falta es
    ver lo que se está escribiendo. */
 body.teclado-abierto .menu { display: none; }
+
+/* ------------------------------------------------- aviso de la app nativa -- */
+
+.aviso-nativa {
+  background: var(--acento-tenue);
+  border: 1px solid var(--acento);
+  border-radius: var(--radio);
+  padding: 14px;
+  font-size: 14px;
+  color: var(--texto);
+}

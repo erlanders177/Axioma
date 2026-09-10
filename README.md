@@ -5,8 +5,12 @@
 # Axioma
 
 **Calculadora científica multifunción.**
-Dieciséis apartados en una sola pantalla, abiertos a la vez, en español y
-sin conexión a internet. En Windows y **en el navegador del móvil**.
+Dieciséis apartados en una sola pantalla, abiertos a la vez, en español y sin
+conexión a internet. **Aplicación para Windows y para Android**, y también en
+el navegador.
+
+La matemática está escrita una sola vez: las tres versiones ejecutan el mismo
+núcleo en Python.
 
 [![tests](https://github.com/erlanders177/Axioma/actions/workflows/tests.yml/badge.svg)](https://github.com/erlanders177/Axioma/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
@@ -124,10 +128,12 @@ Funciona en el móvil y en el ordenador, sin instalar nada.
   sin conexión. El botón se adapta al navegador: en Chrome, Edge, Opera o
   Samsung instala de un toque; en Firefox de Android ofrece el APK y la ruta de
   su menú; en iPhone, los pasos de Safari.
-- **Con el APK**: `Axioma.apk` está en la
+- **Con la aplicación de Android**: `Axioma.apk` está en la
   [última versión](https://github.com/erlanders177/Axioma/releases/latest).
-  Pesa 1,2 MB porque no duplica nada, es una envoltura sobre la misma web.
-  Al no venir de Google Play, Android pedirá permiso para instalarlo.
+  Desde la 5.0 es **nativa** y lo lleva todo dentro —interfaz, Python y
+  sympy—, así que no necesita conexión ni depende de esta página. Al no venir
+  de Google Play, Android pedirá permiso para instalarla, y ella misma avisa
+  cuando hay una versión nueva.
 
 **Abre en medio segundo** y **sigue donde lo dejó**: el apartado en el que
 estaba, lo escrito y sus variables. La primera visita descarga Python entero
@@ -266,8 +272,14 @@ Axioma/
 ├── tools/
 │   ├── generar_icono.py        regenera el icono de forma reproducible
 │   ├── preparar_web.py         empaqueta src/core para el navegador
+│   ├── preparar_android.py     copia src/core dentro de la app de Android
 │   ├── generar_social.py       imagen para compartir el enlace
 │   └── crear_acceso_directo.py acceso directo en el escritorio
+├── android/                    la aplicación nativa de Android
+│   └── app/src/main/
+│       ├── java/…/Nucleo.kt    puente con el Python empotrado
+│       ├── java/…/Apartados.kt los siete apartados
+│       └── python/             copia de src/core (generada)
 ├── web/                        la misma calculadora en el navegador
 │   ├── social.png              la imagen que se ve al compartir el enlace
 │   ├── robots.txt              y sitemap.xml, para los buscadores

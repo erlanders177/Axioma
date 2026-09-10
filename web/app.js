@@ -23,10 +23,10 @@ const APARTADOS = [
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js";
 
 //: Se muestra en la cabecera. Debe subir en cada publicación.
-const VERSION = "4.4.0";
+const VERSION = "5.0.0";
 
-//: La aplicación de Android, adjunta a la última versión publicada. Es la
-//: salida para los navegadores que no ofrecen instalación automática.
+//: La aplicación de Android, adjunta a la última versión publicada. Desde la
+//: 5.0 es nativa y lo lleva todo dentro: no necesita esta página ni conexión.
 const ENLACE_APK =
   "https://github.com/erlanders177/Axioma/releases/latest/download/Axioma.apk";
 //: Y la de Windows, para quien llegue desde un ordenador.
@@ -245,6 +245,7 @@ function montar() {
   prepararTema();
   prepararInstalacion();
   vigilarElTecladoDelSistema();
+  avisarDeLaAplicacionNativa();
   // La versión, a la vista: sin ella no hay forma de saber si el móvil está
   // usando la copia guardada de hace tres días o la de verdad.
   $("#version").textContent = "web · v" + VERSION;
@@ -944,9 +945,10 @@ function abrirDialogoDeInstalacion(dialogo, cuerpo, peticion) {
 
   // 2. En Android el APK vale para cualquier navegador, Firefox incluido.
   if (nav.android) {
-    opcion("Descargar la aplicación (APK)",
-      "Se descarga un archivo; ábralo y se instala. Android pedirá permiso " +
-      "porque no viene de Google Play.",
+    opcion("Descargar la aplicación de Android",
+      "Aplicación nativa: lo lleva todo dentro, abre al momento y no necesita " +
+      "esta página ni conexión. Android pedirá permiso al instalarla porque no " +
+      "viene de Google Play.",
       () => { window.location.href = ENLACE_APK; });
   }
 
@@ -1132,6 +1134,34 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") recordarEstado();
 });
 window.addEventListener("pagehide", recordarEstado);
+
+/** Avisa una vez de que existe la aplicación de Android, y no vuelve a dar la lata. */
+function avisarDeLaAplicacionNativa() {
+  const CLAVE = "axioma:aviso-nativa";
+  if (!/android/i.test(navigator.userAgent)) return;
+  try {
+    if (localStorage.getItem(CLAVE)) return;
+  } catch {
+    return;
+  }
+
+  const aviso = crear("div", "aviso-nativa");
+  aviso.append(crear("span", null,
+    "Ya hay aplicación de Android: lo lleva todo dentro y abre al momento."));
+
+  const descargar = crear("button", "accion", "Descargar");
+  descargar.onclick = () => { window.location.href = ENLACE_APK; };
+  const cerrar = crear("button", "accion secundaria", "Ahora no");
+  cerrar.onclick = () => {
+    try { localStorage.setItem(CLAVE, "1"); } catch { /* da igual */ }
+    aviso.remove();
+  };
+
+  const botones = crear("div", "fila");
+  botones.append(descargar, cerrar);
+  aviso.append(botones);
+  $("#lienzo").prepend(aviso);
+}
 
 window.addEventListener("resize", refrescarMenu);
 

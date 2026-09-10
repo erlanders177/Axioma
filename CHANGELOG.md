@@ -4,6 +4,60 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ---
 
+## 5.0.0
+
+**Aplicación de Android de verdad.** Ni una página metida en un envoltorio ni
+un acceso directo: interfaz nativa, con sus pestañas, sus desplegables y su
+teclado.
+
+### Es una aplicación, no un navegador disfrazado
+
+Lo que había hasta ahora era un APK de 1,2 MB que abría la web. Funcionaba,
+pero dependía de internet la primera vez, de que la página siguiera en pie, y
+por dentro seguía siendo un navegador.
+
+La de ahora **lo lleva todo dentro**: la interfaz, el intérprete de Python y
+sympy. No pide conexión para nada —salvo para mirar si hay versión nueva— y no
+depende de ninguna página.
+
+### La misma matemática, no una copia
+
+Dentro corre **el mismo `src/core`** que la versión de escritorio y la web, con
+un intérprete de Python empotrado ([Chaquopy](https://chaquo.com/chaquopy/),
+MIT). No se ha reescrito la matemática en Kotlin: tres implementaciones
+distintas acabarían dando tres resultados distintos, y el que fallara sería
+siempre el que no se está mirando.
+
+Seis pruebas se ejecutan en un Android de verdad en cada cambio, y comprueban
+justo eso: el cilindro de `5 cm` y `50 mm` da 392.699 cm³, `3 km + 200 m` da
+3.2 km, la ecuación da 2 y 3, y hay 61 figuras.
+
+### Qué trae
+
+Siete apartados: calculadora con su teclado, conversiones, geometría con los
+datos de cada figura, ecuaciones, cálculo, combinatoria y bases. Barra de
+cálculo abajo, variables compartidas entre apartados —pulsar un resultado lo
+guarda con todos sus decimales— e historial propio de cada uno.
+
+### Se instala encima de la anterior
+
+Lleva el mismo identificador y **la misma firma** que el APK que ya estaba
+publicado, así que Android la trata como una actualización: se instala encima,
+sin desinstalar y sin perder nada. Comprobado que la huella del certificado
+coincide con la del anterior.
+
+Y como Axioma no está en Google Play, donde nadie avisa de las versiones
+nuevas, **la aplicación lo comprueba ella sola** una vez al día y ofrece
+descargar la actualización.
+
+### Notas
+
+La versión web sigue publicada y se actualiza sola; a quien entre desde Android
+se le avisa una vez de que existe la aplicación nativa. La de Windows sigue
+igual.
+
+---
+
 ## 4.4.0
 
 El teclado del móvil deja de estorbar.
