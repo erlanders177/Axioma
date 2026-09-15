@@ -23,7 +23,7 @@ const APARTADOS = [
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js";
 
 //: Se muestra en la cabecera. Debe subir en cada publicación.
-const VERSION = "5.0.1";
+const VERSION = "5.0.2";
 
 //: La aplicación de Android, adjunta a la última versión publicada. Desde la
 //: 5.0 es nativa y lo lleva todo dentro: no necesita esta página ni conexión.
@@ -880,6 +880,9 @@ function navegador() {
     safari: esIOS && !/crios|fxios|edgios/i.test(ua),
     escritorio: !esIOS && !/android|mobile/i.test(ua),
     windows: /windows/i.test(ua),
+    // Dentro de la aplicación web instalada, sin barra de direcciones.
+    instalada: window.matchMedia("(display-mode: standalone)").matches ||
+               window.navigator.standalone === true,
   };
 }
 
@@ -910,6 +913,14 @@ function prepararInstalacion() {
   const yaInstalada = window.matchMedia("(display-mode: standalone)").matches ||
                       window.navigator.standalone === true;
   boton.hidden = yaInstalada;
+
+  // Dentro de la aplicación web instalada en Android, el botón sigue a la
+  // vista con otro nombre: es la puerta a la aplicación nativa, y si se
+  // escondiera no habría manera de llegar hasta ella.
+  if (yaInstalada && /android/i.test(navigator.userAgent)) {
+    boton.hidden = false;
+    boton.textContent = "App Android";
+  }
 
   $("#dialogo-cerrar").onclick = () => dialogo.close();
   boton.onclick = () => abrirDialogoDeInstalacion(dialogo, cuerpo, peticion);
@@ -964,7 +975,38 @@ function abrirDialogoDeInstalacion(dialogo, cuerpo, peticion) {
   }
 
   // 2. En Android el APK vale para cualquier navegador, Firefox incluido.
-  if (nav.android) {
+  if (nav.android && nav.instalada) {
+    /* Desde la aplicación web instalada, Firefox (y algún otro) no descarga
+     * archivos: abre una vista incrustada que intenta cargar el APK como si
+     * fuera una página y se queda en blanco. No hay forma de pedir «ábrelo en
+     * el navegador de verdad» desde aquí, así que se le da el enlace para que
+     * lo lleve él: compartirlo con el navegador, o copiarlo. */
+    cuerpo.append(crear("p", "pista",
+      "Está en la aplicación web instalada, y desde aquí el navegador no " +
+      "puede descargar archivos. Lleve el enlace al navegador:"));
+
+    if (navigator.share) {
+      opcion("Abrir en el navegador", "Elija Firefox o Chrome en la lista que sale.",
+        async () => {
+          try {
+            await navigator.share({ title: "Axioma para Android", url: ENLACE_APK });
+          } catch { /* canceló */ }
+        });
+    }
+
+    opcion("Copiar el enlace", "Luego abra Firefox o Chrome y péguelo en la barra.",
+      async () => {
+        try {
+          await navigator.clipboard.writeText(ENLACE_APK);
+          alert("Enlace copiado. Abra el navegador y péguelo en la barra de direcciones.");
+        } catch {
+          prompt("Copie este enlace y ábralo en el navegador:", ENLACE_APK);
+        }
+      });
+
+    const direccion = crear("p", "direccion", ENLACE_APK);
+    cuerpo.append(direccion);
+  } else if (nav.android) {
     enlace("Descargar la aplicación de Android", ENLACE_APK,
       "Aplicación nativa: lo lleva todo dentro, abre al momento y no necesita " +
       "esta página ni conexión. Son 56 MB, así que tarda un poco; el aviso de " +
@@ -1171,10 +1213,10 @@ function avisarDeLaAplicacionNativa() {
   aviso.append(crear("span", null,
     "Ya hay aplicación de Android: lo lleva todo dentro y abre al momento."));
 
-  const descargar = crear("a", "accion", "Descargar");
-  descargar.href = ENLACE_APK;
-  descargar.rel = "noopener";
-  descargar.setAttribute("download", "");
+  const descargar = crear("button", "accion", "Descargar");
+  // Pasa por el mismo diálogo que el botón de instalar: es el que sabe si se
+  // puede descargar directamente o hay que llevar el enlace al navegador.
+  descargar.onclick = () => $("#btn-instalar").click();
   const cerrar = crear("button", "accion secundaria", "Ahora no");
   cerrar.onclick = () => {
     try { localStorage.setItem(CLAVE, "1"); } catch { /* da igual */ }

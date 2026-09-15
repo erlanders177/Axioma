@@ -4,6 +4,26 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ---
 
+## 5.0.2
+
+### Corregido
+
+**Desde la aplicación web instalada no se podía descargar la de Android.**
+Firefox en Android no descarga archivos desde una aplicación web instalada:
+abre una vista incrustada que intenta cargar el APK como si fuera una página y
+se queda en blanco. Desde el navegador normal sí funciona; desde la instalada,
+no hay forma.
+
+Así que desde ahí ya no se intenta: el diálogo lo dice, y da el enlace para
+llevarlo al navegador de verdad —**«Abrir en el navegador»**, con la lista de
+Android para elegir Firefox o Chrome, o **«Copiar el enlace»**— y lo deja
+escrito por si prefiere teclearlo.
+
+El botón de la cabecera, que se escondía al estar instalada, se queda a la
+vista como **«App Android»**: si no, no habría manera de llegar a la nativa.
+
+---
+
 ## 5.0.1
 
 ### Corregido

@@ -499,3 +499,17 @@ a.accion.secundaria {
   font-weight: 500;
 }
 .aviso-nativa .fila a.accion { flex: 1; }
+
+/* La dirección de descarga, para poder leerla y copiarla a mano. */
+.dialogo .direccion {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: var(--panel-alto);
+  border-radius: 8px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  color: var(--suave);
+  word-break: break-all;
+  user-select: all;
+  -webkit-user-select: all;
+}

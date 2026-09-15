@@ -685,3 +685,46 @@ def test_con_el_teclado_abierto_se_quitan_las_pestanas(navegador, servidor):
     }""")
     assert pagina.is_visible("#menu"), "y volver al cerrarse"
     contexto.close()
+
+
+def test_desde_la_app_instalada_se_lleva_el_enlace_al_navegador(navegador, servidor):
+    """Firefox en Android no descarga archivos desde una app web instalada.
+
+    Abre una vista incrustada que intenta cargar el APK como si fuera una
+    página y se queda en blanco. Desde ahí no hay descarga posible: lo que se
+    puede hacer es darle el enlace para que lo lleve al navegador de verdad.
+    """
+    contexto = navegador.new_context(
+        viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True,
+        user_agent="Mozilla/5.0 (Android 14; Mobile; rv:130.0) Gecko/130.0 Firefox/130.0",
+        permissions=["clipboard-read", "clipboard-write"],
+    )
+    pagina = contexto.new_page()
+    # Como si estuviera instalada: sin barra de direcciones.
+    pagina.add_init_script("""
+        const original = window.matchMedia.bind(window);
+        window.matchMedia = (consulta) => consulta.includes("display-mode: standalone")
+            ? { matches: true, media: consulta, addEventListener() {}, removeEventListener() {} }
+            : original(consulta);
+    """)
+    pagina.goto(servidor, wait_until="load")
+    esperar_a_la_aplicacion(pagina)
+
+    boton = pagina.locator("#btn-instalar")
+    assert boton.is_visible(), "desde la app instalada tiene que haber puerta a la nativa"
+    assert "Android" in boton.text_content()
+    boton.click()
+
+    dialogo = pagina.text_content("#dialogo-instalar")
+    assert "no puede descargar" in dialogo
+    assert "Copiar el enlace" in dialogo
+    # Nada de enlaces directos al archivo: es lo que se queda en blanco.
+    assert pagina.locator("#dialogo-cuerpo a[href$='Axioma.apk']").count() == 0
+    # Y la dirección a la vista, para poder copiarla a mano.
+    assert "Axioma.apk" in pagina.text_content("#dialogo-cuerpo .direccion")
+
+    pagina.once("dialog", lambda d: d.accept())
+    pagina.click("#dialogo-cuerpo button.accion:has-text('Copiar')")
+    copiado = pagina.evaluate("navigator.clipboard.readText()")
+    assert copiado.endswith("Axioma.apk"), copiado
+    contexto.close()
