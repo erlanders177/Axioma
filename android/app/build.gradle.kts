@@ -4,6 +4,23 @@ plugins {
     id("com.chaquo.python")
 }
 
+/* La versión sale de src/__init__.py, la misma que Windows y la web.
+ *
+ * Escrita aquí a mano, se quedaba atrás: el APK de una versión nueva salía con
+ * el mismo número interno que el anterior, y Android se niega a instalar
+ * encima un APK cuyo número no sube. Las actualizaciones morían justo en el
+ * segundo intento.
+ *
+ * El número interno se deriva de la versión (5.0.2 → 50002), así que sube
+ * solo y siempre en el mismo orden que la versión visible. */
+val versionDelProyecto: String = Regex("__version__\s*=\s*\"([^\"]+)\"")
+    .find(file("../../src/__init__.py").readText())
+    ?.groupValues?.get(1) ?: "0.0.0"
+
+val numeroInterno: Int = versionDelProyecto.split(".")
+    .map { it.toIntOrNull() ?: 0 }
+    .let { (it.getOrElse(0) { 0 } * 10000) + (it.getOrElse(1) { 0 } * 100) + it.getOrElse(2) { 0 } }
+
 android {
     namespace = "io.github.erlanders177.axioma"
     compileSdk = 35
@@ -12,8 +29,8 @@ android {
         applicationId = "io.github.erlanders177.axioma"
         minSdk = 24
         targetSdk = 35
-        versionCode = 10
-        versionName = "5.0.0"
+        versionCode = numeroInterno
+        versionName = versionDelProyecto
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {

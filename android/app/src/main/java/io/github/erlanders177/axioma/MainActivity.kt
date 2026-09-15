@@ -38,6 +38,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(vista.root)
 
         vista.version.text = "v${BuildConfig.VERSION_NAME}"
+        // Tocar la versión busca actualizaciones ahora, sin esperar al día.
+        vista.version.setOnClickListener { Actualizaciones.comprobar(this, siempre = true) }
         vista.apartados.adapter = Apartados(this)
         vista.apartados.offscreenPageLimit = 2
         TabLayoutMediator(vista.pestanas, vista.apartados) { pestana, posicion ->

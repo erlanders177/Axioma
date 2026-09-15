@@ -71,11 +71,17 @@ jobs:
           cp "$ruta" "$RUNNER_TEMP/Axioma-nativa.apk"
           echo "ruta=$RUNNER_TEMP/Axioma-nativa.apk" >> "$GITHUB_OUTPUT"
 
-      - name: Comprobar que va firmado
+      - name: Comprobar que va firmado y con la versión del proyecto
         run: |
           herramientas=$(ls -d "$ANDROID_HOME"/build-tools/* | tail -1)
           "$herramientas/apksigner" verify --print-certs "$RUNNER_TEMP/Axioma-nativa.apk"
           echo "El APK está firmado."
+
+          # La versión tiene que ser la de src/__init__.py, y el número interno
+          # tiene que subir con ella: si no, Android no instala encima.
+          esperada=$(python -c "import re;print(re.search(r'__version__\s*=\s*\"([^\"]+)\"', open('src/__init__.py').read()).group(1))")
+          "$herramientas/aapt" dump badging "$RUNNER_TEMP/Axioma-nativa.apk" | grep "^package:"
+          "$herramientas/aapt" dump badging "$RUNNER_TEMP/Axioma-nativa.apk"             | grep -q "versionName='$esperada'"             && echo "El APK lleva la versión $esperada."             || { echo "El APK no lleva la versión $esperada"; exit 1; }
 
       - uses: actions/upload-artifact@v4
         with:
