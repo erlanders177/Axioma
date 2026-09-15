@@ -6,6 +6,17 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ## 5.0.2
 
+### Las actualizaciones, de verdad
+
+- **La versión del APK sale del proyecto**, no de un número escrito a mano.
+  Con el número fijo, el APK de una versión nueva salía con el mismo número
+  interno que el anterior, y Android se niega a instalar encima un APK cuyo
+  número no sube: las actualizaciones habrían muerto en el segundo intento.
+  Ahora el número se deriva de la versión (5.0.2 → 50002) y el flujo lo
+  comprueba con `aapt` antes de publicar.
+- **Tocar la versión** en la cabecera de la aplicación busca actualizaciones al
+  momento, sin esperar a la comprobación diaria.
+
 ### Corregido
 
 **Desde la aplicación web instalada no se podía descargar la de Android.**
