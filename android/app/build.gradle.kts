@@ -13,7 +13,7 @@ plugins {
  *
  * El número interno se deriva de la versión (5.0.2 → 50002), así que sube
  * solo y siempre en el mismo orden que la versión visible. */
-val versionDelProyecto: String = Regex("__version__\s*=\s*\"([^\"]+)\"")
+val versionDelProyecto: String = Regex("__version__\\s*=\\s*\"([^\"]+)\"")
     .find(file("../../src/__init__.py").readText())
     ?.groupValues?.get(1) ?: "0.0.0"
 
