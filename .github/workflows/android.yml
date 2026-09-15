@@ -81,7 +81,12 @@ jobs:
           # tiene que subir con ella: si no, Android no instala encima.
           esperada=$(python -c "import re;print(re.search(r'__version__\s*=\s*\"([^\"]+)\"', open('src/__init__.py').read()).group(1))")
           "$herramientas/aapt" dump badging "$RUNNER_TEMP/Axioma-nativa.apk" | grep "^package:"
-          "$herramientas/aapt" dump badging "$RUNNER_TEMP/Axioma-nativa.apk"             | grep -q "versionName='$esperada'"             && echo "El APK lleva la versión $esperada."             || { echo "El APK no lleva la versión $esperada"; exit 1; }
+          version_apk=$("$herramientas/aapt" dump badging "$RUNNER_TEMP/Axioma-nativa.apk" | grep -o "versionName='[^']*'")
+          echo "APK: $version_apk · proyecto: $esperada"
+          if [ "$version_apk" != "versionName='$esperada'" ]; then
+            echo "El APK no lleva la versión del proyecto" >&2
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
