@@ -19,6 +19,7 @@ from axioma_nucleo import figuras as geo
 from axioma_nucleo import magnitudes
 from axioma_nucleo import unidades as uni
 from axioma_nucleo import variables
+from axioma_nucleo.calculadora import Calculadora, paso_a_dict
 from axioma_nucleo.evaluador import ErrorExpresion, evaluar
 from axioma_nucleo.formato import formatear
 
@@ -79,6 +80,116 @@ def _calcular(expresion: str, modo: str = "DEG", decimales: int = 6) -> dict:
 
 def calcular(expresion: str, modo: str = "DEG", decimales: int = 6) -> str:
     return _responder(_calcular, expresion, modo, decimales)
+
+
+#: La calculadora de la pantalla principal, con su editor de fracciones, Ans y
+#: el resultado exacto. Es la misma clase que usa el escritorio.
+_calculadora = Calculadora()
+
+
+def teclear(orden: str, argumento: str = "", modo: str = "DEG",
+            decimales: int = 6) -> str:
+    """Una tecla de la calculadora. Devuelve la pantalla entera para dibujarla."""
+    def hacer() -> dict:
+        _calculadora.modo = modo
+        _calculadora.decimales = int(decimales)
+        estado = _calculadora.tecla(orden, argumento)
+        if estado["anotar"]:
+            estado["variables"] = _entorno()
+        return estado
+
+    return _responder(hacer)
+
+
+def _lista_de_pasos(pasos: list) -> list:
+    return [paso_a_dict(paso) for paso in pasos]
+
+
+def pasos_calculadora() -> str:
+    """El paso a paso de la cuenta en pantalla, aquí mismo (necesita sympy)."""
+    return _responder(lambda: _lista_de_pasos(_calculadora.pasos()))
+
+
+def cuenta_calculadora() -> str:
+    """La cuenta que hay que desarrollar, para mandarla al hilo de lo pesado.
+
+    En el navegador, sympy vive en otro hilo, que no ve esta calculadora: se
+    le manda el texto de la cuenta con las variables y Ans de ese momento.
+    """
+    def hacer() -> dict:
+        cuenta = _calculadora.cuenta_a_desarrollar()
+        if isinstance(cuenta, list):
+            return {"pasos": _lista_de_pasos(cuenta)}
+        texto, entorno = cuenta
+        return {"texto": texto, "modo": _calculadora.modo,
+                "entorno": entorno, "decimales": _calculadora.decimales}
+
+    return _responder(hacer)
+
+
+def pasos_de_cuenta(texto: str, modo: str, entorno_json: str, decimales: int = 6) -> str:
+    def hacer() -> list:
+        from axioma_nucleo.pasos_cuentas import pasos_expresion
+
+        return _lista_de_pasos(pasos_expresion(texto, modo, json.loads(entorno_json),
+                                               int(decimales)))
+
+    return _responder(hacer)
+
+
+# ------------------------------------------------------- el hilo de lo pesado -- #
+
+def poner_variables(variables_json: str) -> None:
+    """Las variables del usuario, tal como están en la pantalla.
+
+    Este puente también corre en el hilo de las cuentas pesadas, que es otro
+    Python con sus propias variables: las de la pantalla le llegan con cada
+    petición.
+    """
+    variables.borrar_todas()
+    for nombre, valor in json.loads(variables_json or "{}").items():
+        try:
+            variables.definir(nombre, float(valor))
+        except (variables.ErrorVariable, TypeError, ValueError):
+            continue
+
+
+def preparar_pesado(carpeta_compilados: str | None = None) -> bool:
+    """Importa sympy y lo que lo usa. Devuelve si hubo que compilarlo ahora.
+
+    Con `carpeta_compilados`, la primera vez se compila sympy entero y se deja
+    allí, y las siguientes se lee de allí en lugar de compilar otra vez. Se
+    guarda sin comprobar fechas: los archivos de un paquete de Pyodide no
+    cambian sin cambiar de versión, y la versión va en el nombre de la carpeta.
+    """
+    import importlib
+    import importlib.util
+    import os
+    import sys
+
+    recien = False
+    if carpeta_compilados:
+        sys.pycache_prefix = carpeta_compilados
+        marca = os.path.join(carpeta_compilados, "completo")
+        if not os.path.exists(marca):
+            import compileall
+            import py_compile
+
+            for paquete in ("mpmath", "sympy"):
+                origen = importlib.util.find_spec(paquete)
+                if origen and origen.origin:
+                    compileall.compile_dir(
+                        os.path.dirname(origen.origin), quiet=1,
+                        invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH)
+            os.makedirs(carpeta_compilados, exist_ok=True)
+            with open(marca, "w", encoding="utf-8") as archivo:
+                archivo.write("ok")
+            recien = True
+
+    for modulo in ("sympy", "axioma_nucleo.simbolico", "axioma_nucleo.pasos",
+                   "axioma_nucleo.pasos_cuentas", "axioma_nucleo.calculo"):
+        importlib.import_module(modulo)
+    return recien
 
 
 def vista_previa(expresion: str, modo: str = "DEG", decimales: int = 6) -> str:
@@ -157,6 +268,17 @@ def convertir(valor: float, origen: str, destino: str, categoria: str,
     return _responder(hacer)
 
 
+def pasos_conversion(valor: float, origen: str, destino: str, categoria: str,
+                     decimales: int = 6) -> str:
+    def hacer() -> list:
+        from axioma_nucleo import pasos_cuentas
+
+        return _lista_de_pasos(pasos_cuentas.pasos_conversion(
+            float(valor), origen, destino, categoria, int(decimales)))
+
+    return _responder(hacer)
+
+
 # ------------------------------------------------------------------ geometría -- #
 
 def lista_figuras() -> str:
@@ -185,35 +307,42 @@ def parametros_de(figura: str) -> str:
     return _responder(hacer)
 
 
+def _datos_de_figura(f, valores_json: str):
+    """Los datos de una figura ya en números, y la unidad de longitud común.
+
+    Cada dato puede venir como «5 cm», «sqrt(16)» o «radio»: se resuelve igual
+    que en el escritorio, y las longitudes se unifican a la primera unidad que
+    aparezca.
+    """
+    crudos = json.loads(valores_json)
+    longitudes = [p.simbolo for p in f.parametros if p.unidad in ("u", "u²", "u³")]
+    cantidades: dict[str, magnitudes.Cantidad] = {}
+    for simbolo, texto in crudos.items():
+        cantidades[simbolo] = _cantidad(str(texto))
+
+    referencia = None
+    for simbolo in longitudes:
+        cantidad = cantidades.get(simbolo)
+        if cantidad is not None and cantidad.unidad is not None:
+            if cantidad.categoria != "Longitud":
+                raise ValueError(
+                    f"«{cantidad.unidad.simbolo}» no es una unidad de longitud."
+                )
+            referencia = cantidad.unidad
+            break
+
+    valores = {}
+    for simbolo, cantidad in cantidades.items():
+        if referencia is not None and simbolo in longitudes and cantidad.unidad:
+            cantidad = cantidad.convertida_a(referencia)
+        valores[simbolo] = cantidad.valor
+    return valores, referencia
+
+
 def calcular_figura(figura: str, valores_json: str, decimales: int = 6) -> str:
     def hacer() -> dict:
         f = geo.figura(figura)
-        crudos = json.loads(valores_json)
-
-        # Cada dato puede venir como «5 cm», «sqrt(16)» o «radio»: se resuelve
-        # igual que en el escritorio, y las longitudes se unifican a la primera
-        # unidad que aparezca.
-        longitudes = [p.simbolo for p in f.parametros if p.unidad in ("u", "u²", "u³")]
-        cantidades: dict[str, magnitudes.Cantidad] = {}
-        for simbolo, texto in crudos.items():
-            cantidades[simbolo] = _cantidad(str(texto))
-
-        referencia = None
-        for simbolo in longitudes:
-            cantidad = cantidades.get(simbolo)
-            if cantidad is not None and cantidad.unidad is not None:
-                if cantidad.categoria != "Longitud":
-                    raise ValueError(
-                        f"«{cantidad.unidad.simbolo}» no es una unidad de longitud."
-                    )
-                referencia = cantidad.unidad
-                break
-
-        valores = {}
-        for simbolo, cantidad in cantidades.items():
-            if referencia is not None and simbolo in longitudes and cantidad.unidad:
-                cantidad = cantidad.convertida_a(referencia)
-            valores[simbolo] = cantidad.valor
+        valores, referencia = _datos_de_figura(f, valores_json)
 
         def con_unidad(sufijo: str) -> str:
             if referencia is None or sufijo not in ("u", "u²", "u³"):
@@ -229,6 +358,19 @@ def calcular_figura(figura: str, valores_json: str, decimales: int = 6) -> str:
                 for r in resultados
             ],
         }
+
+    return _responder(hacer)
+
+
+def pasos_figura(figura: str, valores_json: str, decimales: int = 6) -> str:
+    def hacer() -> list:
+        from axioma_nucleo import pasos_cuentas
+
+        f = geo.figura(figura)
+        valores, referencia = _datos_de_figura(f, valores_json)
+        unidad = referencia.simbolo if referencia is not None else ""
+        return _lista_de_pasos(pasos_cuentas.pasos_figura(f.nombre, valores, unidad,
+                                                          int(decimales)))
 
     return _responder(hacer)
 
@@ -294,6 +436,21 @@ def resolver_ecuacion(texto: str, decimales: int = 6) -> str:
     return _responder(hacer)
 
 
+def pasos_ecuacion(texto: str) -> str:
+    def hacer() -> list:
+        from axioma_nucleo import pasos as pasos_core
+        from axioma_nucleo import simbolico as sim
+
+        izquierda, derecha = sim.analizar_igualdad(texto)
+        libres = sim.incognitas(izquierda, derecha)
+        if len(libres) != 1:
+            raise ValueError("El paso a paso es para ecuaciones de una incógnita")
+        expresion = sim.sp.simplify(izquierda - derecha)
+        return _lista_de_pasos(pasos_core.pasos_ecuacion(expresion, libres[0]))
+
+    return _responder(hacer)
+
+
 # --------------------------------------------------------------------- bases -- #
 
 def convertir_base(texto: str, origen: int, decimales: int = 8) -> str:
@@ -347,5 +504,27 @@ def calculo(operacion: str, expresion: str, variable: str = "x",
         else:
             raise ValueError(f"Operación desconocida: {operacion}")
         return {"filas": [{"etiqueta": e, "valor": v} for e, v in filas]}
+
+    return _responder(hacer)
+
+
+def pasos_calculo(operacion: str, expresion: str, variable: str = "x") -> str:
+    """El desarrollo de una derivada o una integral."""
+    def hacer() -> list:
+        from axioma_nucleo import calculo as calc
+        from axioma_nucleo import pasos as pasos_core
+
+        funcion, simbolo = calc._preparar(expresion, variable)
+        if operacion == "derivada":
+            return _lista_de_pasos(pasos_core.pasos_derivada(funcion, simbolo))
+        if operacion in ("integral", "integral_definida"):
+            pasos = _lista_de_pasos(pasos_core.pasos_integral(funcion, simbolo))
+            if operacion == "integral_definida":
+                pasos.append({"titulo": "Regla de Barrow",
+                              "detalle": "Con la primitiva F, se evalúa entre los límites.",
+                              "expresion": "∫[a,b] f dx = F(b) − F(a)", "nivel": 0})
+            return pasos
+        raise ValueError("Esta operación no tiene desarrollo paso a paso; "
+                         "sí lo tienen las derivadas y las integrales.")
 
     return _responder(hacer)

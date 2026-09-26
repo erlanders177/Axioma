@@ -23,7 +23,7 @@ const APARTADOS = [
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js";
 
 //: Se muestra en la cabecera. Debe subir en cada publicación.
-const VERSION = "5.0.2";
+const VERSION = "5.1.0";
 
 //: La aplicación de Android, adjunta a la última versión publicada. Desde la
 //: 5.0 es nativa y lo lleva todo dentro: no necesita esta página ni conexión.
@@ -40,7 +40,6 @@ const ENLACE_VERSION = "https://github.com/erlanders177/Axioma/releases/latest";
 const estado = {
   py: null,
   puente: null,
-  sympyCargado: false,
   listo: false,
   pendientes: [],
   fases: {},
@@ -169,6 +168,9 @@ def _despachar(nombre, *args):
     clearTimeout(lento);
     motorListo();
     guardarloTodoDeFondo();
+    // Si se va a necesitar sympy (paso a paso encendido, Ecuaciones o Cálculo
+    // abiertos), su hilo empieza a prepararse ya, sin estorbar a nadie.
+    setTimeout(quizaPrepararLoPesado, 1500);
   } catch (e) {
     clearTimeout(lento);
     document.body.classList.remove("preparando");
@@ -223,11 +225,81 @@ function llamar(funcion, ...args) {
   }
 }
 
-/** sympy pesa varios segundos: se descarga la primera vez que hace falta. */
-async function asegurarSympy() {
-  if (estado.sympyCargado) return;
-  await estado.py.loadPackage("sympy");
-  estado.sympyCargado = true;
+/* ------------------------------------------------------- lo pesado -- */
+
+/* sympy (paso a paso, ecuaciones, derivadas, integrales) va en otro hilo.
+ *
+ * Cargarlo en el de la pantalla la dejaba congelada de 5 a 25 segundos: son
+ * cientos de archivos que el navegador compila al importarlos. En su propio
+ * hilo, la calculadora sigue respondiendo mientras tanto.
+ */
+const pesado = { trabajador: null, siguiente: 1, esperando: new Map(), listo: false };
+
+function trabajadorPesado() {
+  if (pesado.trabajador) return pesado.trabajador;
+  const trabajador = new Worker("pesado.js?v=" + VERSION);
+  const fallar = (mensaje) => {
+    for (const cumplir of pesado.esperando.values()) cumplir({ ok: false, error: mensaje });
+    pesado.esperando.clear();
+    pesado.trabajador = null;       // la próxima vez, se vuelve a intentar
+    trabajador.terminate();
+  };
+  trabajador.onmessage = (evento) => {
+    const { id, respuesta, tipo, error } = evento.data;
+    if (tipo === "listo") {
+      pesado.listo = true;
+      window.__pesadoListo = true;
+      return;
+    }
+    if (tipo === "fallo") {
+      fallar("No se pudo preparar el motor de álgebra: " + error);
+      return;
+    }
+    const cumplir = pesado.esperando.get(id);
+    if (!cumplir) return;
+    pesado.esperando.delete(id);
+    try {
+      cumplir(JSON.parse(respuesta));
+    } catch (e) {
+      cumplir({ ok: false, error: String(e) });
+    }
+  };
+  trabajador.onerror = (e) => fallar(e.message || "El motor de álgebra se ha detenido");
+  trabajador.postMessage({ tipo: "arrancar", pyodide: PYODIDE,
+                           version: PYODIDE.match(/v[\d.]+/)?.[0] || "v" });
+  pesado.trabajador = trabajador;
+  return trabajador;
+}
+
+/** Como `llamar`, pero en el hilo de sympy. Devuelve una promesa. */
+function llamarPesado(funcion, ...args) {
+  return new Promise((cumplir) => {
+    const id = pesado.siguiente++;
+    pesado.esperando.set(id, cumplir);
+    let variables = {};
+    if (estado.listo) {
+      const r = llamar("listar_variables");
+      if (r.ok) variables = r.datos;
+    }
+    trabajadorPesado().postMessage({ id, funcion, args, variables });
+  });
+}
+
+/** Lo que se enseña mientras sympy se prepara, que la primera vez tarda. */
+function esperandoAlAlgebra(texto) {
+  return pesado.listo ? texto
+    : "Preparando el motor de álgebra… La primera vez tarda un poco; " +
+      "la calculadora se puede seguir usando mientras tanto.";
+}
+
+function quizaPrepararLoPesado() {
+  let conPasos = false;
+  try {
+    conPasos = APARTADOS.some((a) => localStorage.getItem("axioma:pasos:" + a.clave) === "1");
+  } catch { /* sin almacenamiento, no se sabe: se espera a que haga falta */ }
+  if (conPasos || estado.abiertos.has("ecuaciones") || estado.abiertos.has("calculo")) {
+    trabajadorPesado();
+  }
 }
 
 /* ----------------------------------------------------------------- menú -- */
@@ -265,6 +337,7 @@ function alternar(clave) {
     estado.abiertos.add(clave);
   }
   refrescarMenu();
+  if (clave === "ecuaciones" || clave === "calculo") trabajadorPesado();
 }
 
 function refrescarMenu() {
@@ -301,25 +374,66 @@ function construirApartado(ap) {
 
 /* ------------------------------------------------------- calculadora -- */
 
+/* La pantalla es la de una calculadora escolar: las fracciones se ven con su
+ * raya y sus dos huecos, las raíces con su signo, y el resultado sale exacto
+ * (√2/2, 3/4) con la tecla S⇔D para pasarlo a decimal.
+ *
+ * Qué hace cada tecla lo decide el núcleo —la clase `Calculadora`, la misma del
+ * escritorio y de Android—. Aquí sólo se le pasan las teclas y se dibuja la
+ * pantalla que devuelve.
+ */
+
+//: [rótulo, clase, orden, argumento]. El rótulo vacío es la tecla de fracción,
+//: que se dibuja con sus dos huecos.
 const TECLAS = [
-  ["sin", "fn", "sin("], ["cos", "fn", "cos("], ["tan", "fn", "tan("],
-  ["√", "fn", "sqrt("], ["C", "op", "#limpiar"],
-  ["ln", "fn", "ln("], ["log", "fn", "log10("], ["(", "op", "("],
-  [")", "op", ")"], ["⌫", "op", "#borrar"],
-  ["7", "", "7"], ["8", "", "8"], ["9", "", "9"], ["÷", "op", "/"], ["^", "op", "^"],
-  ["4", "", "4"], ["5", "", "5"], ["6", "", "6"], ["×", "op", "*"], ["π", "fn", "pi"],
-  ["1", "", "1"], ["2", "", "2"], ["3", "", "3"], ["−", "op", "-"], ["!", "fn", "!"],
-  ["0", "", "0"], [".", "", "."], ["ans", "fn", "ans"], ["+", "op", "+"], ["=", "igual", "#calcular"],
+  ["◀", "nav", "izquierda"], ["▶", "nav", "derecha"],
+  ["", "fn fraccion", "fraccion"], ["S⇔D", "fn sd", "sd"], ["C", "op", "limpiar"],
+  ["sin", "fn", "insertar", "sin("], ["cos", "fn", "insertar", "cos("],
+  ["tan", "fn", "insertar", "tan("], ["√", "fn", "insertar", "√("], ["⌫", "op", "borrar"],
+  ["ln", "fn", "insertar", "ln("], ["log", "fn", "insertar", "log("],
+  ["(", "op", "insertar", "("], [")", "op", "insertar", ")"], ["xʸ", "op", "insertar", "^"],
+  ["7", "", "insertar", "7"], ["8", "", "insertar", "8"], ["9", "", "insertar", "9"],
+  ["÷", "op", "insertar", "÷"], ["π", "fn", "insertar", "π"],
+  ["4", "", "insertar", "4"], ["5", "", "insertar", "5"], ["6", "", "insertar", "6"],
+  ["×", "op", "insertar", "×"], ["x²", "fn", "insertar", "²"],
+  ["1", "", "insertar", "1"], ["2", "", "insertar", "2"], ["3", "", "insertar", "3"],
+  ["−", "op", "insertar", "−"], ["Ans", "fn", "insertar", "Ans"],
+  ["0", "", "insertar", "0"], [".", "", "insertar", "."], ["!", "fn", "insertar", "!"],
+  ["+", "op", "insertar", "+"], ["=", "igual", "calcular"],
 ];
+
+//: Las piezas de la pantalla de la calculadora, para no buscarlas cada vez.
+const calc = {
+  vista: null,
+  captura: null,
+  salida: null,
+  sd: null,
+  pasos: null,
+  //: Teclas pulsadas antes de que el motor estuviera listo.
+  pendientes: [],
+  //: Lo escrito, en una línea: es lo que se recuerda al cerrar.
+  texto: "",
+};
 
 function montarCalculadora(seccion) {
   const pantalla = crear("div", "pantalla");
-  const entrada = crear("input");
-  entrada.id = "calc-entrada";
-  entrada.placeholder = "0";
-  entrada.autocomplete = "off";
-  entrada.autocapitalize = "off";
-  entrada.spellcheck = false;
+
+  // Lo que se ve y, encima, un campo invisible que recoge lo que se teclea
+  // desde un teclado de verdad o desde el del móvil. Lo tecleado no se queda
+  // en el campo: pasa al núcleo, que es quien sabe de fracciones.
+  const entrada = crear("div", "entrada-natural");
+  const vista = crear("div", "vista");
+  vista.id = "calc-vista";
+  vista.setAttribute("aria-hidden", "true");
+  const captura = crear("input", "captura");
+  captura.id = "calc-entrada";
+  captura.setAttribute("aria-label", "Expresión");
+  captura.autocomplete = "off";
+  captura.autocapitalize = "off";
+  captura.spellcheck = false;
+  captura.setAttribute("autocorrect", "off");
+  captura.enterKeyHint = "done";
+  entrada.append(vista, captura);
 
   // Aquí se escribe con el teclado de la aplicación, que tiene sin, cos, √ y
   // π. Sacar además el del sistema tapa media pantalla —el propio teclado
@@ -327,12 +441,14 @@ function montarCalculadora(seccion) {
   // impide en todos los navegadores; `inputmode` solo no basta en algunos.
   const conTecladoPropio = estado.tactil();
   if (conTecladoPropio) {
-    entrada.readOnly = true;
-    entrada.inputMode = "none";
+    captura.readOnly = true;
+    captura.inputMode = "none";
   }
 
-  const previa = crear("div", "previa");
-  pantalla.append(entrada, previa);
+  const salida = crear("div", "salida-calc");
+  salida.id = "calc-resultado";
+  salida.setAttribute("aria-live", "polite");
+  pantalla.append(entrada, salida);
 
   // Para nombres de variables o expresiones largas, el teclado del sistema
   // sigue estando a un toque.
@@ -343,16 +459,12 @@ function montarCalculadora(seccion) {
     abrirTeclado.title = "Escribir con el teclado del móvil";
     abrirTeclado.setAttribute("aria-pressed", "false");
     abrirTeclado.onclick = () => {
-      const activar = entrada.readOnly;
-      entrada.readOnly = !activar;
-      entrada.inputMode = activar ? "text" : "none";
+      const activar = captura.readOnly;
+      captura.readOnly = !activar;
+      captura.inputMode = activar ? "text" : "none";
       abrirTeclado.setAttribute("aria-pressed", String(activar));
-      if (activar) {
-        entrada.focus();
-        entrada.setSelectionRange(entrada.value.length, entrada.value.length);
-      } else {
-        entrada.blur();
-      }
+      if (activar) captura.focus();
+      else captura.blur();
     };
     pantalla.append(abrirTeclado);
   }
@@ -361,59 +473,334 @@ function montarCalculadora(seccion) {
   for (const m of ["DEG — grados", "RAD — radianes", "GRAD — gradianes"]) {
     modo.append(new Option(m, m.slice(0, m.indexOf(" "))));
   }
-  modo.onchange = () => { estado.modo = modo.value; };
+  modo.onchange = () => { estado.modo = modo.value; if (estado.listo) tecla("estado"); };
+
+  const pasos = montarPasos("calculadora", async () => {
+    const cuenta = llamar("cuenta_calculadora");
+    if (!cuenta.ok) return cuenta;
+    if (cuenta.datos.pasos) return { ok: true, datos: cuenta.datos.pasos };
+    const c = cuenta.datos;
+    return llamarPesado("pasos_de_cuenta", c.texto, c.modo, JSON.stringify(c.entorno),
+                        c.decimales);
+  });
+  const barra = crear("div", "fila barra-calc");
+  barra.append(modo, pasos.boton);
 
   const teclado = crear("div", "teclado");
-  for (const [texto, clase, orden] of TECLAS) {
-    const tecla = crear("button", clase, texto);
-    tecla.type = "button";
-    tecla.onclick = () => pulsar(entrada, orden, previa, "calculadora");
-    teclado.append(tecla);
+  for (const [texto, clase, orden, argumento] of TECLAS) {
+    const boton = crear("button", clase, texto);
+    boton.type = "button";
+    if (orden === "fraccion") {
+      boton.append(iconoFraccion());
+      boton.title = "Fracción: un hueco arriba y otro abajo";
+      boton.setAttribute("aria-label", "Fracción");
+    } else if (orden === "sd") {
+      boton.title = "Resultado exacto o decimal";
+      calc.sd = boton;
+    } else if (orden === "izquierda" || orden === "derecha") {
+      boton.setAttribute("aria-label", orden === "izquierda" ? "Mover a la izquierda" : "Mover a la derecha");
+    }
+    boton.onclick = () => {
+      tecla(orden, argumento);
+      // Con el teclado del móvil abierto, pulsar una tecla de la aplicación no
+      // debe cerrarlo. Con el ratón, se sigue pudiendo teclear sin más.
+      if (!captura.readOnly) captura.focus();
+    };
+    teclado.append(boton);
   }
 
-  entrada.oninput = () => actualizarPrevia(entrada, previa);
-  entrada.onkeydown = (e) => {
-    if (e.key === "Enter") pulsar(entrada, "#calcular", previa, "calculadora");
+  // El resultado también se puede llevar a otro apartado, como los demás.
+  salida.onclick = () => {
+    if (salida.dataset.valor) usarComoVariable("resultado", Number(salida.dataset.valor));
   };
 
-  seccion.append(pantalla, modo, teclado);
+  seccion.append(pantalla, barra, pasos.caja, teclado);
+  Object.assign(calc, { vista, captura, salida, pasos });
+  prepararCaptura(captura);
+  pintarProvisional();
+  // En cuanto hay motor, la pantalla de verdad (con su cursor).
+  cuandoListo(() => { if (!calc.pendientes.length) tecla("estado"); });
 }
 
-function pulsar(entrada, orden, previa, clave) {
-  if (orden === "#limpiar") { entrada.value = ""; previa.textContent = ""; return; }
-  if (orden === "#borrar") { entrada.value = entrada.value.slice(0, -1); }
-  else if (orden === "#calcular") {
-    // Se puede escribir mientras el motor arranca: el cálculo se atiende en
-    // cuanto esté, en vez de perderse con un error.
-    if (!estado.listo) {
-      previa.textContent = "Preparando el motor…";
-      cuandoListo(() => pulsar(entrada, "#calcular", previa, clave));
-      return;
-    }
-    const r = llamar("calcular", entrada.value, estado.modo);
-    if (r.ok) {
-      anotar(clave, entrada.value + " = " + r.datos.texto, entrada.value);
-      entrada.value = r.datos.variable ? "" : r.datos.texto;
-      previa.textContent = r.datos.variable
-        ? r.datos.variable + " = " + r.datos.texto : "";
-      refrescarVariables();
-    } else {
-      previa.innerHTML = '<span class="error">' + r.error + "</span>";
-    }
+function iconoFraccion() {
+  const icono = crear("span", "icono-fraccion");
+  icono.append(crear("span", "caja"), crear("span", "raya"), crear("span", "caja"));
+  return icono;
+}
+
+/** Una tecla de la calculadora: al núcleo, y a dibujar lo que conteste. */
+function tecla(orden, argumento = "") {
+  // Se puede escribir mientras el motor arranca: las teclas esperan su turno
+  // y se atienden en orden en cuanto está, en vez de perderse.
+  if (!estado.listo) {
+    calc.pendientes.push([orden, argumento]);
+    if (calc.pendientes.length === 1) cuandoListo(soltarPendientes);
+    pintarProvisional();
     return;
-  } else {
-    entrada.value += orden;
   }
-  actualizarPrevia(entrada, previa);
-
-  // Enfocar reabre el teclado del sistema en el móvil, que es justo lo que se
-  // quiere evitar. Con el ratón sí conviene, para poder seguir escribiendo.
-  if (!estado.tactil() || !entrada.readOnly) entrada.focus();
+  const r = llamar("teclear", orden, argumento, estado.modo, 6);
+  if (!r.ok) {
+    calc.salida.replaceChildren(crear("span", "error", r.error));
+    return;
+  }
+  pintarCalculadora(r.datos);
 }
 
-function actualizarPrevia(entrada, previa) {
-  const r = llamar("vista_previa", entrada.value, estado.modo);
-  previa.textContent = r.ok && r.datos.texto ? "= " + r.datos.texto : "";
+function soltarPendientes() {
+  for (const [orden, argumento] of calc.pendientes.splice(0)) tecla(orden, argumento);
+}
+
+/** Lo tecleado antes de tener motor, tal cual, para que no parezca perdido. */
+function pintarProvisional() {
+  let texto = "";
+  for (const [orden, argumento] of calc.pendientes) {
+    if (orden === "insertar" || orden === "escribir" || orden === "cargar") {
+      texto = (orden === "cargar" ? "" : texto) + argumento;
+    } else if (orden === "fraccion") texto += "/";
+    else if (orden === "borrar") texto = texto.slice(0, -1);
+    else if (orden === "limpiar") texto = "";
+  }
+  const linea = crear("span", "linea");
+  linea.append(crear("span", "txt", texto), crear("span", "cursor"));
+  calc.vista.replaceChildren(linea);
+  calc.vista.className = "vista provisional" + (texto ? "" : " vacia");
+  calc.salida.className = "salida-calc previa";
+  calc.salida.textContent = calc.pendientes.some(([o]) => o === "calcular")
+    ? "Preparando el motor…" : "";
+}
+
+function pintarCalculadora(d) {
+  const linea = crear("span", "linea");
+  linea.append(dibujar(d.entrada));
+  calc.vista.replaceChildren(linea);
+  calc.vista.className = "vista" + (d.vacia ? " vacia" : "") + (d.calculado ? " calculado" : "");
+  calc.texto = d.texto;
+  // En texto plano, para quien no ve el dibujo (lectores de pantalla, pruebas).
+  calc.vista.dataset.texto = d.texto;
+  calc.captura.setAttribute("aria-label", "Expresión: " + (d.texto || "vacía"));
+  calc.salida.dataset.texto = d.resultado ? d.resultado.texto : "";
+
+  const salida = calc.salida;
+  if (d.error) {
+    salida.className = "salida-calc";
+    salida.replaceChildren(crear("span", "error", d.error));
+  } else if (d.resultado) {
+    salida.className = "salida-calc resultado";
+    const resultado = crear("span", "linea");
+    resultado.append(dibujar(d.resultado.arbol));
+    salida.replaceChildren(resultado);
+    salida.dataset.valor = d.resultado.valor;
+    salida.title = "Pulse para guardarlo como variable y usarlo en otro apartado";
+  } else {
+    salida.className = "salida-calc previa";
+    salida.textContent = d.previa;
+    delete salida.dataset.valor;
+    salida.title = "";
+  }
+
+  const conExacto = !!d.resultado?.tiene_exacto;
+  calc.sd.setAttribute("aria-disabled", String(!conExacto));
+  calc.sd.setAttribute("aria-pressed", String(!!d.resultado?.en_decimal));
+
+  // Que el cursor no se quede fuera de la vista en una expresión larga.
+  const cursor = calc.vista.querySelector(".cursor");
+  if (cursor) {
+    const x = cursor.offsetLeft;
+    const ancho = calc.vista.clientWidth;
+    if (x < calc.vista.scrollLeft || x > calc.vista.scrollLeft + ancho - 12) {
+      calc.vista.scrollLeft = Math.max(0, x - ancho + 40);
+    }
+  }
+
+  if (d.anotar) {
+    anotar("calculadora", d.anotar.texto, d.anotar.expresion);
+    refrescarVariables();
+    calc.pasos.refrescar();
+  }
+}
+
+/** Dibuja un árbol del núcleo: texto, fracciones, raíces, huecos y cursor. */
+function dibujar(nodos) {
+  const trozo = document.createDocumentFragment();
+  (nodos || []).forEach((n, i) => {
+    if (n.t === "txt") {
+      trozo.append(crear("span", "txt", espaciarOperadores(n.v, i === 0)));
+    } else if (n.t === "cursor") {
+      trozo.append(crear("span", "cursor"));
+    } else if (n.t === "hueco") {
+      trozo.append(crear("span", n.activo ? "hueco activo" : "hueco"));
+    } else if (n.t === "frac") {
+      const fraccion = crear("span", "frac");
+      const arriba = crear("span", "num");
+      arriba.append(dibujar(n.n));
+      const abajo = crear("span", "den");
+      abajo.append(dibujar(n.d));
+      fraccion.append(arriba, abajo);
+      trozo.append(fraccion);
+    } else if (n.t === "raiz") {
+      const raiz = crear("span", "raiz");
+      if (n.i) raiz.append(crear("span", "indice", n.i));
+      raiz.append(crear("span", "signo", "√"));
+      const dentro = crear("span", "radicando");
+      dentro.append(dibujar(n.r));
+      raiz.append(dentro);
+      trozo.append(raiz);
+    }
+  });
+  return trozo;
+}
+
+/** «1+2» se lee mejor con un poco de aire: «1 + 2». El signo de delante, no. */
+function espaciarOperadores(texto, primero) {
+  return texto.replace(/\s*([+−×÷=])\s*/g, (_, op, pos) =>
+    (primero && pos === 0 ? op : " " + op + " "));
+}
+
+/* El campo invisible que recoge lo tecleado.
+ *
+ * No se lee su contenido, sino lo que cambia: lo añadido va al núcleo tecla a
+ * tecla y lo borrado se borra allí. Siempre guarda un espacio, para que el
+ * borrado llegue aunque el campo parezca vacío: en Android, sin nada que
+ * borrar, el teclado no avisa de que se ha pulsado.
+ */
+const SENTINELA = " ";
+
+function prepararCaptura(captura) {
+  let previo = SENTINELA;
+  let componiendo = false;
+
+  const reiniciar = () => {
+    captura.value = SENTINELA;
+    previo = SENTINELA;
+    try { captura.setSelectionRange(1, 1); } catch { /* sin foco */ }
+  };
+
+  const leer = (tipo = "") => {
+    const actual = captura.value;
+    if (actual === previo) return;
+    let comun = 0;
+    while (comun < previo.length && comun < actual.length &&
+           previo[comun] === actual[comun]) comun++;
+    let borrados = previo.length - comun;
+    // Sustituir el espacio de guarda al escribir (todo seleccionado, un
+    // pegado) no es borrar nada de la cuenta.
+    if (previo === SENTINELA && comun === 0 && tipo.startsWith("insert")) borrados = 0;
+    // Los espacios cuentan («20 °C a °F»); varios seguidos, como uno.
+    const nuevo = actual.slice(comun).replace(/\s+/g, " ");
+    previo = actual;
+    for (let k = 0; k < borrados; k++) tecla("borrar");
+    if (nuevo.length === 1) tecla("insertar", nuevo);
+    else if (nuevo) tecla("escribir", nuevo);
+  };
+
+  captura.addEventListener("keydown", (e) => {
+    if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
+    const orden = {
+      Enter: "calcular", ArrowLeft: "izquierda", ArrowRight: "derecha",
+      ArrowUp: "arriba", ArrowDown: "abajo", Home: "inicio", End: "fin",
+      Escape: "limpiar",
+    }[e.key];
+    if (orden) {
+      e.preventDefault();
+      tecla(orden);
+    }
+  });
+  captura.addEventListener("compositionstart", () => { componiendo = true; });
+  captura.addEventListener("compositionend", () => {
+    componiendo = false;
+    // Firefox avisa del último cambio después de cerrar la composición.
+    setTimeout(() => {
+      if (componiendo) return;
+      leer();
+      reiniciar();
+    }, 0);
+  });
+  captura.addEventListener("input", (e) => {
+    leer(e.inputType || "");
+    if (!componiendo && !e.isComposing) reiniciar();
+  });
+  // El cursor que cuenta es el del núcleo; el del campo, siempre al final.
+  const alFinal = () => {
+    if (componiendo) return;
+    try { captura.setSelectionRange(captura.value.length, captura.value.length); } catch { /* */ }
+  };
+  captura.addEventListener("focus", alFinal);
+  captura.addEventListener("click", alFinal);
+  captura.addEventListener("paste", () => setTimeout(alFinal, 0));
+  reiniciar();
+}
+
+/* ---------------------------------------------------------- paso a paso -- */
+
+/** El botón «Paso a paso» de un apartado y la caja donde se ve el desarrollo.
+ *
+ * `obtener` devuelve (o promete) la respuesta del puente con la lista de pasos.
+ * Queda encendido o apagado como se dejó, también al volver a abrir.
+ */
+function montarPasos(clave, obtener) {
+  const boton = crear("button", "accion secundaria boton-pasos", "Paso a paso");
+  boton.type = "button";
+  boton.id = "btn-pasos-" + clave;
+  const caja = crear("div", "pasos");
+  caja.id = "pasos-" + clave;
+  caja.hidden = true;
+
+  const CLAVE = "axioma:pasos:" + clave;
+  let activo = false;
+  try { activo = localStorage.getItem(CLAVE) === "1"; } catch { /* */ }
+  let turno = 0;
+
+  const refrescar = async () => {
+    if (!activo) return;
+    const mio = ++turno;
+    caja.hidden = false;
+    caja.replaceChildren(crear("div", "pista", esperandoAlAlgebra("Preparando el desarrollo…")));
+    let r;
+    try {
+      r = await obtener();
+    } catch (e) {
+      r = { ok: false, error: e.message || String(e) };
+    }
+    if (mio !== turno || !activo) return;
+    pintarPasos(caja, r);
+  };
+
+  const poner = (valor) => {
+    activo = valor;
+    boton.setAttribute("aria-pressed", String(activo));
+    try { localStorage.setItem(CLAVE, activo ? "1" : "0"); } catch { /* */ }
+    if (activo) {
+      cuandoListo(refrescar);
+    } else {
+      turno++;
+      caja.hidden = true;
+    }
+  };
+
+  boton.onclick = () => poner(!activo);
+  boton.setAttribute("aria-pressed", String(activo));
+  return { boton, caja, refrescar: () => { if (activo) cuandoListo(refrescar); } };
+}
+
+function pintarPasos(caja, r) {
+  if (!r || !r.ok) {
+    caja.replaceChildren(crear("div", "error", r?.error || "No se pudo desarrollar"));
+    return;
+  }
+  if (!r.datos.length) {
+    caja.replaceChildren(crear("div", "pista", "Aquí no hay pasos que enseñar."));
+    return;
+  }
+  const lista = crear("ol");
+  for (const paso of r.datos) {
+    const elemento = crear("li");
+    if (paso.nivel) elemento.style.marginLeft = paso.nivel * 14 + "px";
+    elemento.append(crear("div", "paso-titulo", paso.titulo));
+    if (paso.detalle) elemento.append(crear("div", "paso-detalle", paso.detalle));
+    if (paso.expresion) elemento.append(crear("div", "paso-expresion", paso.expresion));
+    lista.append(elemento);
+  }
+  caja.replaceChildren(lista);
 }
 
 /* ------------------------------------------------------- conversiones -- */
@@ -455,6 +842,11 @@ function montarConversiones(seccion) {
     convertir();
   };
 
+  const pasos = montarPasos("conversiones", async () => {
+    return llamarPesado("pasos_conversion", parseFloat(valor.value || "0"),
+                        origen.value, destino.value, categoria.value);
+  });
+
   const convertir = () => {
     const r = llamar("convertir", parseFloat(valor.value || "0"),
                      origen.value, destino.value, categoria.value);
@@ -462,6 +854,7 @@ function montarConversiones(seccion) {
     salida.textContent = `${valor.value} ${origen.value}  =  ${r.datos.texto} ${destino.value}`;
     tabla.replaceChildren(...r.datos.tabla.map((f) =>
       filaResultado(f.etiqueta, f.texto, f.valor)));
+    pasos.refrescar();
   };
 
   categoria.onchange = cargarUnidades;
@@ -473,7 +866,8 @@ function montarConversiones(seccion) {
   guardar.onclick = () => anotar("conversiones", salida.textContent, null);
 
   seccion.append(rotulo("Magnitud"), categoria, rotulo("Valor"), valor,
-                 rotulo("De"), origen, rotulo("A"), destino, salida, tabla, guardar);
+                 rotulo("De"), origen, rotulo("A"), destino, salida, pasos.boton,
+                 pasos.caja, tabla, guardar);
 }
 
 /* ----------------------------------------------------------- geometría -- */
@@ -498,6 +892,16 @@ function montarGeometria(seccion) {
   const resultados = crear("div", "resultados");
   const formulas = crear("div", "pista");
   const calcular = crear("button", "accion", "Calcular");
+  const leerValores = () => {
+    const valores = {};
+    for (const campo of campos.querySelectorAll("input")) {
+      valores[campo.dataset.simbolo] = campo.value;
+    }
+    return valores;
+  };
+  const pasos = montarPasos("geometria", async () => {
+    return llamarPesado("pasos_figura", figura.value, JSON.stringify(leerValores()));
+  });
 
   const cargar = () => {
     const r = llamar("parametros_de", figura.value);
@@ -518,17 +922,14 @@ function montarGeometria(seccion) {
   };
 
   const hacer = (guardar = false) => {
-    const valores = {};
-    for (const campo of campos.querySelectorAll("input")) {
-      valores[campo.dataset.simbolo] = campo.value;
-    }
-    const r = llamar("calcular_figura", figura.value, JSON.stringify(valores));
+    const r = llamar("calcular_figura", figura.value, JSON.stringify(leerValores()));
     if (!r.ok) {
       resultados.innerHTML = '<span class="error">' + r.error + "</span>";
       return;
     }
     resultados.replaceChildren(...r.datos.resultados.map((f) =>
       filaResultado(f.etiqueta, f.texto, f.valor)));
+    pasos.refrescar();
     if (guardar) {
       const resumen = r.datos.resultados.slice(0, 2)
         .map((f) => `${f.etiqueta}: ${f.texto}`).join(", ");
@@ -538,7 +939,9 @@ function montarGeometria(seccion) {
 
   figura.onchange = cargar;
   calcular.onclick = () => hacer(true);
-  seccion.append(rotulo("Figura"), figura, campos, calcular, resultados, formulas);
+  const botones = crear("div", "fila");
+  botones.append(calcular, pasos.boton);
+  seccion.append(rotulo("Figura"), figura, campos, botones, resultados, pasos.caja, formulas);
 }
 
 /* ---------------------------------------------------------- ecuaciones -- */
@@ -549,11 +952,13 @@ function montarEcuaciones(seccion) {
   entrada.value = "x^2 - 5x + 6 = 0";
   const salida = crear("div", "salida", "—");
   const resolver = crear("button", "accion", "Resolver");
+  const pasos = montarPasos("ecuaciones", async () => {
+    return llamarPesado("pasos_ecuacion", entrada.value);
+  });
 
   const hacer = async () => {
-    salida.textContent = "Resolviendo…";
-    await asegurarSympy();
-    const r = llamar("resolver_ecuacion", entrada.value);
+    salida.textContent = esperandoAlAlgebra("Resolviendo…");
+    const r = await llamarPesado("resolver_ecuacion", entrada.value);
     if (!r.ok) { salida.innerHTML = '<span class="error">' + r.error + "</span>"; return; }
     const d = r.datos;
     const lineas = [
@@ -568,11 +973,14 @@ function montarEcuaciones(seccion) {
     salida.textContent = lineas.join("\n");
     anotar("ecuaciones", entrada.value + "  →  " +
       d.soluciones.map((s) => s.exacto).join(", "), entrada.value);
+    pasos.refrescar();
   };
 
   resolver.onclick = hacer;
   entrada.onkeydown = (e) => { if (e.key === "Enter") hacer(); };
-  seccion.append(rotulo("Ecuación"), entrada, resolver, salida);
+  const botones = crear("div", "fila");
+  botones.append(resolver, pasos.boton);
+  seccion.append(rotulo("Ecuación"), entrada, botones, salida, pasos.caja);
 }
 
 /* ------------------------------------------------------------- cálculo -- */
@@ -599,6 +1007,9 @@ function montarCalculo(seccion) {
 
   const salida = crear("div", "resultados");
   const boton = crear("button", "accion", "Calcular");
+  const pasos = montarPasos("calculo", async () => {
+    return llamarPesado("pasos_calculo", operacion.value, funcion.value, variable.value || "x");
+  });
 
   const ajustar = () => {
     const op = operacion.value;
@@ -609,22 +1020,24 @@ function montarCalculo(seccion) {
   };
 
   const hacer = async () => {
-    salida.textContent = "Calculando…";
-    await asegurarSympy();
-    const r = llamar("calculo", operacion.value, funcion.value,
+    salida.textContent = esperandoAlAlgebra("Calculando…");
+    const r = await llamarPesado("calculo", operacion.value, funcion.value,
                      variable.value || "x", desde.value, hasta.value);
     if (!r.ok) { salida.innerHTML = '<span class="error">' + r.error + "</span>"; return; }
     salida.replaceChildren(...r.datos.filas.map((f) =>
       filaResultado(f.etiqueta, f.valor, null)));
     anotar("calculo", `${operacion.selectedOptions[0].text} de ${funcion.value}`,
            funcion.value);
+    pasos.refrescar();
   };
 
   operacion.onchange = ajustar;
   boton.onclick = hacer;
   funcion.onkeydown = (e) => { if (e.key === "Enter") hacer(); };
+  const botones = crear("div", "fila");
+  botones.append(boton, pasos.boton);
   seccion.append(rotulo("Operación"), operacion, rotulo("Función"), funcion,
-                 rotulo("Variable"), variable, extremos, boton, salida);
+                 rotulo("Variable"), variable, extremos, botones, salida, pasos.caja);
   ajustar();
 }
 
@@ -839,6 +1252,10 @@ function pintarHistorial(clave) {
     if (e.expresion) {
       elemento.title = "Pulse para volver a cargarlo";
       elemento.onclick = () => {
+        if (clave === "calculadora") {
+          tecla("cargar", e.expresion);
+          return;
+        }
         const destino = document.querySelector("#ap-" + clave + " input");
         if (destino) { destino.value = e.expresion; destino.dispatchEvent(new Event("input")); }
       };
@@ -1110,7 +1527,7 @@ function camposDe(clave) {
   if (!seccion) return null;
   return {
     selects: [...seccion.querySelectorAll("select")],
-    entradas: [...seccion.querySelectorAll("input")],
+    entradas: [...seccion.querySelectorAll("input:not(.captura)")],
   };
 }
 
@@ -1119,6 +1536,7 @@ function recordarEstado() {
     const datos = {
       abiertos: [...estado.abiertos],
       modo: estado.modo,
+      calculadora: calc.texto,
       apartados: {},
     };
     for (const ap of APARTADOS) {
@@ -1189,6 +1607,7 @@ function restaurarEstado() {
       llamar("definir_variable", nombre, valor);
     }
     refrescarVariables();
+    if (datos.calculadora && !calc.pendientes.length) tecla("cargar", datos.calculadora);
   });
 }
 

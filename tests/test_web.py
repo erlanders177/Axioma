@@ -112,10 +112,74 @@ def escribir_en_la_calculadora(pagina, texto: str) -> None:
     pagina.fill("#calc-entrada", texto)
 
 
+def resultado(pagina) -> str:
+    """El resultado en pantalla, en texto plano («5/6», «2√2»)."""
+    return pagina.get_attribute("#calc-resultado", "data-texto") or ""
+
+
+def escrito(pagina) -> str:
+    """Lo escrito en la calculadora, en una línea («1/2+1/3»)."""
+    return pagina.get_attribute("#calc-vista", "data-texto") or ""
+
+
+def pulsar(pagina, *teclas: str) -> None:
+    """Teclas de la aplicación por su rótulo; «FRAC» es la de fracción."""
+    for tecla in teclas:
+        if tecla == "FRAC":
+            pagina.click("#ap-calculadora .teclado button.fraccion")
+        else:
+            pagina.click(f"#ap-calculadora .teclado button:text-is('{tecla}')")
+
+
 def test_arranca_y_calcula(pagina):
     escribir_en_la_calculadora(pagina, "2*sin(30)+sqrt(16)")
     pagina.keyboard.press("Enter")
-    assert pagina.input_value("#calc-entrada") == "5"
+    assert resultado(pagina) == "5"
+
+
+def test_la_tecla_de_fraccion_tiene_dos_huecos(pagina):
+    """«1» arriba, «2» abajo, sin un solo paréntesis; y S⇔D a decimal."""
+    pulsar(pagina, "C", "FRAC", "1", "▶", "2", "▶", "+", "FRAC", "1", "▶", "3")
+    assert pagina.locator("#calc-vista .frac").count() == 2
+    pulsar(pagina, "=")
+    assert resultado(pagina) == "5/6"
+    pulsar(pagina, "S⇔D")
+    assert resultado(pagina) == "0.833333"
+
+
+def test_la_raya_tecleada_tambien_es_una_fraccion(pagina):
+    escribir_en_la_calculadora(pagina, "1/2+1/3")
+    assert pagina.locator("#calc-vista .frac").count() == 2
+    pagina.keyboard.press("Enter")
+    assert resultado(pagina) == "5/6"
+
+
+def test_el_resultado_sale_exacto_y_se_dibuja(pagina):
+    pulsar(pagina, "C", "√", "7", "2", ")", "=")
+    assert resultado(pagina) == "6√2"
+    assert pagina.locator("#calc-resultado .raiz").count() == 1
+
+
+def test_lo_exacto_no_carga_sympy_en_la_pantalla(pagina):
+    """sympy congela la página de 5 a 25 segundos: nunca en su hilo."""
+    pulsar(pagina, "C", "sin", "4", "5", ")", "=")
+    assert resultado(pagina) == "√2/2"
+    cargado = pagina.evaluate("estado.py.runPython(\"import sys; 'sympy' in sys.modules\")")
+    assert cargado is False
+
+
+def test_el_paso_a_paso_llega_sin_bloquear(pagina):
+    pulsar(pagina, "C", "√", "7", "2", ")", "=")
+    pagina.click("#btn-pasos-calculadora")
+    try:
+        # Mientras sympy se prepara en su hilo, la calculadora responde.
+        pulsar(pagina, "C", "7")
+        assert escrito(pagina) == "7"
+        pulsar(pagina, "C", "√", "7", "2", ")", "=")
+        pagina.wait_for_selector("#pasos-calculadora ol", timeout=ESPERA)
+        assert "√72 = √(36·2) = √36·√2 = 6√2" in pagina.text_content("#pasos-calculadora")
+    finally:
+        pagina.click("#btn-pasos-calculadora")
 
 
 def test_la_barra_opera_con_unidades(pagina):
@@ -378,7 +442,7 @@ def test_una_version_nueva_llega_al_navegador(playwright, tmp_path_factory):
         esperar_a_la_aplicacion(pagina2)
         escribir_en_la_calculadora(pagina2, "2+2")
         pagina2.keyboard.press("Enter")
-        assert pagina2.input_value("#calc-entrada") == "4"
+        assert resultado(pagina2) == "4"
     finally:
         navegador.close()
         proceso.terminate()
@@ -493,7 +557,7 @@ def test_lo_escrito_antes_de_tiempo_no_se_pierde(navegador, servidor):
     pagina.keyboard.press("Enter")          # el motor todavía no está
 
     pagina.wait_for_function(
-        "document.querySelector('#calc-entrada').value === '5'", timeout=ESPERA)
+        "document.querySelector('#calc-resultado').dataset.texto === '5'", timeout=ESPERA)
     contexto.close()
 
 
@@ -527,7 +591,8 @@ def test_al_volver_sigue_donde_lo_dejo(navegador, servidor):
     valores = pagina2.eval_on_selector_all(
         "#ap-geometria input[data-simbolo]", "n => n.map(i => i.value)")
     assert valores[:2] == ["7 cm", "3 cm"], valores
-    assert pagina2.input_value("#calc-entrada") == "123+1"
+    pagina2.wait_for_function(
+        "document.querySelector('#calc-vista').dataset.texto === '123+1'", timeout=30000)
     contexto.close()
 
 
@@ -614,10 +679,10 @@ def test_con_el_dedo_no_sale_el_teclado_del_movil_en_la_calculadora(navegador, s
     # Y con todo, se escribe: las teclas de la aplicación siguen funcionando.
     for tecla in ("7", "+", "8"):
         pagina.click(f"#ap-calculadora .teclado button:text-is('{tecla}')")
-    assert pagina.input_value("#calc-entrada") == "7+8"
+    assert escrito(pagina) == "7+8"
 
     pagina.click("#ap-calculadora .teclado button.igual")
-    assert pagina.input_value("#calc-entrada") == "15"
+    assert resultado(pagina) == "15"
     contexto.close()
 
 
@@ -656,7 +721,14 @@ def test_con_raton_la_calculadora_se_escribe_con_el_teclado(navegador, servidor)
     assert pagina.locator("#btn-teclado").count() == 0
     pagina.fill("#calc-entrada", "6*7")
     pagina.keyboard.press("Enter")
-    assert pagina.input_value("#calc-entrada") == "42"
+    assert resultado(pagina) == "42"
+
+    # Las flechas y el borrado del teclado de verdad se mueven por la fracción.
+    pagina.keyboard.press("Escape")
+    pagina.keyboard.type("1/23")
+    pagina.keyboard.press("Backspace")
+    pagina.keyboard.press("Enter")
+    assert resultado(pagina) == "1/2"
     contexto.close()
 
 

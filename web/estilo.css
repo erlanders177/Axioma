@@ -454,6 +454,7 @@ button.plano.destacado {
   padding: 0 8px;
   font-size: 15px;
   opacity: .65;
+  z-index: 1;
 }
 .pantalla .teclado-sistema[aria-pressed="true"] {
   opacity: 1;
@@ -512,4 +513,149 @@ a.accion.secundaria {
   word-break: break-all;
   user-select: all;
   -webkit-user-select: all;
+}
+
+/* ------------------------------------------- pantalla de calculadora escolar -- */
+
+/* Lo escrito se dibuja como en el cuaderno: fracciones con su raya, raíces con
+   su signo. Encima va un campo invisible que recoge el teclado. */
+.entrada-natural { position: relative; }
+.pantalla .vista {
+  position: relative;
+  display: flex;
+  min-height: 52px;
+  font-size: 28px;
+  line-height: 1.2;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+.pantalla .vista::-webkit-scrollbar { display: none; }
+/* `margin-left: auto` y no `justify-content: flex-end`: así, cuando no cabe,
+   lo que sobra se puede recorrer en lugar de quedar cortado por la izquierda. */
+.pantalla .linea {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 2px 2px 2px 0;
+}
+.pantalla .vista.vacia .linea::after { content: "0"; color: var(--suave); }
+.pantalla .vista.calculado { font-size: 19px; min-height: 34px; color: var(--suave); }
+.pantalla .vista.provisional { color: var(--suave); }
+
+.pantalla input.captura {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  /* 16 px: con menos, Safari se acerca de golpe al enfocar. */
+  font-size: 16px;
+  color: transparent;
+  background: transparent;
+  caret-color: transparent;
+  cursor: text;
+}
+.pantalla:focus-within { border-color: var(--acento); }
+
+.salida-calc {
+  display: flex;
+  min-height: 24px;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+.salida-calc.previa, .salida-calc:has(.error) {
+  justify-content: flex-end;
+  color: var(--suave);
+  font-size: 15px;
+}
+.salida-calc.resultado { font-size: 30px; line-height: 1.2; cursor: pointer; }
+
+.txt { white-space: pre; }
+.frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin: 0 .1em;
+  font-size: .9em;
+}
+.frac > .num, .frac > .den, .raiz > .radicando {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.frac > .num { border-bottom: 2px solid currentColor; padding: 0 .15em .06em; }
+.frac > .den { padding: .06em .15em 0; }
+.raiz { display: inline-flex; align-items: stretch; margin: 0 .05em; }
+.raiz > .signo { display: inline-flex; align-items: center; font-size: 1.1em; margin-right: -.02em; }
+.raiz > .radicando { border-top: 2px solid currentColor; padding: .08em .1em 0 .06em; }
+.raiz > .indice { font-size: .45em; align-self: flex-start; margin: .1em -.5em 0 0; }
+
+.cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin: 0 -1px;
+  background: var(--acento);
+  animation: parpadeo 1.05s steps(1) infinite;
+}
+@keyframes parpadeo { 50% { opacity: 0; } }
+.hueco {
+  display: inline-block;
+  width: .6em;
+  height: .8em;
+  margin: .08em .05em;
+  border: 1.5px dashed var(--suave);
+  border-radius: 3px;
+}
+.hueco.activo { border-style: solid; border-color: var(--acento); background: var(--acento-tenue); }
+
+/* La tecla de fracción: dos huecos y la raya, que es lo que hace. */
+.icono-fraccion {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  vertical-align: middle;
+}
+.icono-fraccion .caja { width: 11px; height: 9px; border: 1.5px solid currentColor; border-radius: 2px; }
+.icono-fraccion .raya { width: 17px; border-top: 1.5px solid currentColor; }
+.teclado button.fraccion { color: var(--acento); }
+.teclado button[aria-disabled="true"] { opacity: .4; }
+.teclado button.sd[aria-pressed="true"] { border-color: var(--acento); color: var(--acento); }
+.teclado button.nav { color: var(--suave); }
+
+.barra-calc { align-items: center; }
+
+/* ---------------------------------------------------------- paso a paso -- */
+
+.boton-pasos[aria-pressed="true"] {
+  border-color: var(--acento);
+  color: var(--acento);
+}
+.pasos {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--panel-alto);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  max-height: 45vh;
+  overflow-y: auto;
+}
+.pasos ol { margin: 0; padding-left: 22px; }
+.pasos li { margin: 7px 0; }
+.pasos li::marker { color: var(--suave); }
+.pasos .paso-titulo { font-weight: 600; }
+.pasos .paso-detalle { color: var(--suave); font-size: 13px; }
+.pasos .paso-expresion {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 14px;
+  color: var(--acento);
+  overflow-wrap: anywhere;
 }
