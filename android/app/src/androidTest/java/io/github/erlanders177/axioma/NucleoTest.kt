@@ -65,6 +65,27 @@ class NucleoTest {
     }
 
     @Test
+    fun laCalculadoraDaFraccionesYLaTeclaSD() {
+        Nucleo.llamar("teclear", "limpiar", "", "DEG", 6)
+        datos(Nucleo.llamar("teclear", "escribir", "1/2+1/3", "DEG", 6))
+        val r = datos(Nucleo.llamar("teclear", "calcular", "", "DEG", 6))
+        assertEquals("5/6", r.getJSONObject("resultado").getString("texto"))
+        val d = datos(Nucleo.llamar("teclear", "sd", "", "DEG", 6))
+        assertEquals("0.833333", d.getJSONObject("resultado").getString("texto"))
+    }
+
+    @Test
+    fun elPasoAPasoFuncionaDentroDelMovil() {
+        val cuenta = Nucleo.llamar("pasos_de_cuenta", "sqrt(72)", "DEG", "{}", 6)
+        assertTrue(cuenta.toString(), cuenta.toString().contains("6√2"))
+        val figura = Nucleo.llamar("pasos_figura", "Cilindro",
+                                   """{"r": "5 cm", "h": "10 cm"}""", 6)
+        assertTrue(figura.toString(), figura.toString().contains("250π"))
+        val ecuacion = Nucleo.llamar("pasos_ecuacion", "x^2 - 5x + 6 = 0")
+        assertTrue(ecuacion.toString(), ecuacion.optBoolean("ok"))
+    }
+
+    @Test
     fun hay61FigurasY555Unidades() {
         val figuras = Nucleo.llamar("lista_figuras").getJSONArray("datos")
         assertEquals(61, figuras.length())

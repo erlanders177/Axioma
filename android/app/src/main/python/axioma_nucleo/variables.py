@@ -37,7 +37,7 @@ def _reservados() -> set[str]:
     """Nombres que ya significan algo y no se pueden reutilizar."""
     from .evaluador import CONSTANTES, FUNCIONES
 
-    return set(CONSTANTES) | set(FUNCIONES) | {"ans", "mem"}
+    return set(CONSTANTES) | set(FUNCIONES) | {"ans", "Ans", "mem"}
 
 
 def nombre_disponible(nombre: str) -> bool:

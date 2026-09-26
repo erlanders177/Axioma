@@ -11,10 +11,9 @@ que ya devuelve el árbol de reglas usado, y aquí se traduce y se explica.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-
 import sympy as sp
 
+from .paso import Paso, _Acumulador
 from .simbolico import ErrorSimbolico, texto
 
 __all__ = [
@@ -26,24 +25,6 @@ __all__ = [
 ]
 
 
-@dataclass(frozen=True)
-class Paso:
-    """Una línea del desarrollo."""
-
-    titulo: str
-    detalle: str = ""
-    expresion: str = ""
-    #: Sangría, para que las reglas anidadas se vean como tales.
-    nivel: int = 0
-
-
-@dataclass
-class _Acumulador:
-    pasos: list[Paso] = field(default_factory=list)
-
-    def add(self, titulo: str, detalle: str = "", expresion: str = "",
-            nivel: int = 0) -> None:
-        self.pasos.append(Paso(titulo, detalle, expresion, nivel))
 
 
 def _con_aproximacion(valor) -> str:

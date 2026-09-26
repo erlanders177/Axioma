@@ -21,6 +21,7 @@ PREDETERMINADOS: dict[str, Any] = {
     "ventana": {},               # geometría de la ventana principal
     "disposicion": {},           # apartados abiertos y dónde estaba cada uno
     "max_paneles": 0,            # apartados a la vez; 0 = sin tope
+    "paso_a_paso": {},           # apartado -> si enseña el desarrollo
 }
 
 

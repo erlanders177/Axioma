@@ -21,6 +21,7 @@ class ConversionesFragment : ApartadoFragment() {
     private lateinit var valor: EditText
     private lateinit var resultado: TextView
     private lateinit var tabla: LinearLayout
+    private lateinit var pasos: PasoAPaso
     private var categorias = listOf<String>()
 
     override fun construir(raiz: LinearLayout) {
@@ -48,6 +49,10 @@ class ConversionesFragment : ApartadoFragment() {
         resultado = Piezas.salida(contexto)
         resultado.text = "—"
         raiz.addView(resultado)
+
+        pasos = PasoAPaso(contexto, clave)
+        raiz.addView(pasos.boton)
+        raiz.addView(pasos.caja)
 
         tabla = LinearLayout(contexto)
         tabla.orientation = LinearLayout.VERTICAL
@@ -100,6 +105,7 @@ class ConversionesFragment : ApartadoFragment() {
         val texto = "$cantidad $de  =  ${datos.getString("texto")} $a"
         resultado.text = texto
         if (guardar) anotar(texto)
+        pasos.pedir("pasos_conversion", cantidad, de, a, elegida, 6)
 
         tabla.removeAllViews()
         val filas = datos.getJSONArray("tabla")
@@ -122,6 +128,7 @@ class GeometriaFragment : ApartadoFragment() {
     private lateinit var campos: LinearLayout
     private lateinit var resultados: LinearLayout
     private lateinit var formulas: TextView
+    private lateinit var pasos: PasoAPaso
     private var nombres = listOf<String>()
     private val simbolos = mutableListOf<String>()
     private val entradas = mutableListOf<EditText>()
@@ -143,6 +150,10 @@ class GeometriaFragment : ApartadoFragment() {
         resultados = LinearLayout(contexto)
         resultados.orientation = LinearLayout.VERTICAL
         raiz.addView(resultados)
+
+        pasos = PasoAPaso(contexto, clave)
+        raiz.addView(pasos.boton)
+        raiz.addView(pasos.caja)
 
         formulas = Piezas.aviso(contexto, "")
         raiz.addView(formulas)
@@ -210,6 +221,7 @@ class GeometriaFragment : ApartadoFragment() {
                 val primero = filas.getJSONObject(0)
                 anotar("$elegida → ${primero.getString("etiqueta")}: ${primero.getString("texto")}")
             }
+            pasos.pedir("pasos_figura", elegida, valores.toString(), 6)
         }
     }
 }
@@ -222,6 +234,7 @@ class EcuacionesFragment : ApartadoFragment() {
 
     private lateinit var entrada: EditText
     private lateinit var salida: TextView
+    private lateinit var pasos: PasoAPaso
 
     override fun construir(raiz: LinearLayout) {
         val contexto = requireContext()
@@ -236,6 +249,10 @@ class EcuacionesFragment : ApartadoFragment() {
         salida = Piezas.salida(contexto)
         salida.text = "—"
         raiz.addView(salida)
+
+        pasos = PasoAPaso(contexto, clave)
+        raiz.addView(pasos.boton)
+        raiz.addView(pasos.caja)
     }
 
     private fun resolver() {
@@ -266,6 +283,7 @@ class EcuacionesFragment : ApartadoFragment() {
             salida.text = lineas.toString().trimEnd()
             anotar("$texto  →  " + (0 until soluciones.length())
                 .joinToString(", ") { soluciones.getJSONObject(it).getString("exacto") })
+            pasos.pedir("pasos_ecuacion", texto)
         }
     }
 }
@@ -290,6 +308,7 @@ class CalculoFragment : ApartadoFragment() {
     private lateinit var desde: EditText
     private lateinit var hasta: EditText
     private lateinit var salida: TextView
+    private lateinit var pasos: PasoAPaso
 
     override fun construir(raiz: LinearLayout) {
         val contexto = requireContext()
@@ -321,6 +340,10 @@ class CalculoFragment : ApartadoFragment() {
         salida = Piezas.salida(contexto)
         salida.text = "—"
         raiz.addView(salida)
+
+        pasos = PasoAPaso(contexto, clave)
+        raiz.addView(pasos.boton)
+        raiz.addView(pasos.caja)
     }
 
     private fun calcular() {
@@ -342,6 +365,8 @@ class CalculoFragment : ApartadoFragment() {
                 "${fila.getString("etiqueta")}:  ${fila.getString("valor")}"
             }
             anotar("${operaciones[operacion.selectedItemPosition].second} de ${funcion.text}")
+            pasos.pedir("pasos_calculo", clave, funcion.text.toString(),
+                        variable.text.toString().ifBlank { "x" })
         }
     }
 }
