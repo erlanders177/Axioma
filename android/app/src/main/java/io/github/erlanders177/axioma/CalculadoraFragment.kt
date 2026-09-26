@@ -189,6 +189,9 @@ class CalculadoraFragment : ApartadoFragment() {
         parametros.marginEnd = Piezas.puntos(contexto, 3)
         vista.layoutParams = parametros
 
+        // Por dónde la encuentran las pruebas: el texto «1» no basta, porque
+        // en otros apartados hay campos que también dicen «1».
+        vista.tag = "tecla-$orden"
         vista.isClickable = true
         vista.setOnClickListener { pulsar(orden) }
         return vista

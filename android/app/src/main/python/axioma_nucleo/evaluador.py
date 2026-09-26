@@ -48,14 +48,19 @@ _SUSTITUCIONES = {
 # Multiplicación implícita: sólo en los casos donde no hay ambigüedad posible.
 # Deliberadamente NO se inserta entre dígito y letra, para no romper la notación
 # científica (`1e5`) ni nombres de función con cifras (`log10`).
+#: Lo que puede empezar un factor: letra, cifra o paréntesis. «²» y «³» también
+#: son \w para Python, pero no empiezan nada: `(2)²` es un cuadrado, no «(2)
+#: por ²» (que acababa en `(2)***2` y en un error).
+_EMPIEZA_FACTOR = r"(?=[^\W¹²³⁰⁴⁵⁶⁷⁸⁹]|[(π√∛])"
+
 _IMPLICITA = (
     # `2(3+4)`, `2π`, `3√2`. El lookbehind exige que la cifra empiece un token
     # nuevo, para no partir nombres como `log10` o `log2`.
     (re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)\s*(?=[π√∛(])"), r"\1*"),
     # `π2`, `π(...)`, `ππ`.
-    (re.compile(r"(π)\s*(?=[\w(π√∛])"), r"\1*"),
+    (re.compile(r"(π)\s*" + _EMPIEZA_FACTOR), r"\1*"),
     # `(1+2)(3+4)`, `(1+2)3`, `(1+2)x`.
-    (re.compile(r"(\))\s*(?=[\w(π√∛])"), r"\1*"),
+    (re.compile(r"(\))\s*" + _EMPIEZA_FACTOR), r"\1*"),
 )
 
 _PORCENTAJE = re.compile(r"(\d+(?:\.\d+)?)\s*%")

@@ -6,7 +6,6 @@ import androidx.test.espresso.action.ViewActions.scrollTo
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.withContentDescription
 import androidx.test.espresso.matcher.ViewMatchers.withTagValue
-import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.hamcrest.Matchers.equalTo
@@ -26,14 +25,11 @@ class InterfazTest {
         Thread.sleep(500)
     }
 
-    private fun pulsar(texto: String) {
+    /** Una tecla por lo que hace: «7», «+», «#fraccion», «#derecha», «#sd»… */
+    private fun pulsar(orden: String) {
         // scrollTo antes de cada pulsación: Espresso se niega a tocar una
         // tecla que no esté del todo a la vista, y el teclado queda abajo.
-        onView(withText(texto)).perform(scrollTo(), click())
-    }
-
-    private fun pulsarPorNombre(nombre: String) {
-        onView(withContentDescription(nombre)).perform(scrollTo(), click())
+        onView(withTagValue(equalTo("tecla-$orden" as Any))).perform(scrollTo(), click())
     }
 
     private fun resultadoEs(texto: String) {
@@ -44,11 +40,11 @@ class InterfazTest {
     @Test
     fun elTecladoDeLaAplicacionCalcula() {
         esperarAlMotor()
-        pulsar("C")
+        pulsar("#limpiar")
         pulsar("7")
         pulsar("+")
         pulsar("8")
-        pulsar("=")
+        pulsar("#calcular")
         Thread.sleep(500)
         resultadoEs("15")
     }
@@ -56,32 +52,32 @@ class InterfazTest {
     @Test
     fun laTeclaDeFraccionTieneDosHuecos() {
         esperarAlMotor()
-        pulsar("C")
-        pulsarPorNombre("Fracción")
+        pulsar("#limpiar")
+        pulsar("#fraccion")
         pulsar("1")
-        pulsarPorNombre("Mover a la derecha")      // del numerador al denominador
+        pulsar("#derecha")      // del numerador al denominador
         pulsar("2")
-        pulsarPorNombre("Mover a la derecha")      // fuera de la fracción
+        pulsar("#derecha")      // fuera de la fracción
         pulsar("+")
-        pulsarPorNombre("Fracción")
+        pulsar("#fraccion")
         pulsar("1")
-        pulsarPorNombre("Mover a la derecha")
+        pulsar("#derecha")
         pulsar("3")
-        pulsar("=")
+        pulsar("#calcular")
         Thread.sleep(500)
         resultadoEs("5/6")
-        pulsar("S⇔D")
+        pulsar("#sd")
         resultadoEs("0.833333")
     }
 
     @Test
     fun elResultadoSaleExacto() {
         esperarAlMotor()
-        pulsar("C")
-        pulsar("√")
+        pulsar("#limpiar")
+        pulsar("√(")
         pulsar("8")
         pulsar(")")
-        pulsar("=")
+        pulsar("#calcular")
         Thread.sleep(500)
         resultadoEs("2√2")
     }

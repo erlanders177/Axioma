@@ -275,3 +275,13 @@ def test_cargar_no_deja_parentesis_dentro_de_la_fraccion():
         "n": [{"t": "txt", "v": "2+3"}],
         "d": [{"t": "txt", "v": "4+5"}],
     }]
+
+
+@pytest.mark.parametrize("expresion,esperado", [
+    ("(2)²", "4"), ("√(2)²", "2"), ("(1+2)³", "27"), ("π²", "π²"), ("sin(30)²", "1/4"),
+])
+def test_la_tecla_del_cuadrado_detras_de_un_parentesis(expresion, esperado):
+    """La tecla x² escribe «²»: detrás de «)» o de π no es una multiplicación."""
+    c = Calculadora()
+    c.tecla("cargar", expresion)
+    assert c.tecla("calcular")["resultado"]["texto"] == esperado
