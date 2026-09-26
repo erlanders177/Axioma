@@ -8,7 +8,11 @@ import androidx.test.espresso.matcher.ViewMatchers.withContentDescription
 import androidx.test.espresso.matcher.ViewMatchers.withTagValue
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import android.os.ParcelFileDescriptor
+import android.widget.LinearLayout
 import org.hamcrest.Matchers.equalTo
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,6 +34,19 @@ class InterfazTest {
         // scrollTo antes de cada pulsación: Espresso se niega a tocar una
         // tecla que no esté del todo a la vista, y el teclado queda abajo.
         onView(withTagValue(equalTo("tecla-$orden" as Any))).perform(scrollTo(), click())
+    }
+
+    /**
+     * Una captura de la pantalla, para mirarla después.
+     *
+     * Con los permisos del intérprete de órdenes, que sí puede escribir en la
+     * memoria compartida; el flujo de GitHub las recoge y las adjunta.
+     */
+    private fun capturar(nombre: String) {
+        Thread.sleep(300)
+        val salida = InstrumentationRegistry.getInstrumentation().uiAutomation
+            .executeShellCommand("screencap -p /sdcard/Download/axioma-$nombre.png")
+        ParcelFileDescriptor.AutoCloseInputStream(salida).use { it.readBytes() }
     }
 
     private fun resultadoEs(texto: String) {
@@ -63,9 +80,11 @@ class InterfazTest {
         pulsar("1")
         pulsar("#derecha")
         pulsar("3")
+        capturar("1-escribiendo-fracciones")
         pulsar("#calcular")
         Thread.sleep(500)
         resultadoEs("5/6")
+        capturar("2-resultado-exacto")
         pulsar("#sd")
         resultadoEs("0.833333")
     }
@@ -80,5 +99,31 @@ class InterfazTest {
         pulsar("#calcular")
         Thread.sleep(500)
         resultadoEs("2√2")
+    }
+
+    @Test
+    fun elPasoAPasoSeVe() {
+        esperarAlMotor()
+        pulsar("#limpiar")
+        pulsar("√(")
+        pulsar("7")
+        pulsar("2")
+        pulsar(")")
+        pulsar("#calcular")
+        onView(withTagValue(equalTo("paso-a-paso-calculadora" as Any))).perform(scrollTo(), click())
+        // La primera vez, sympy tarda en cargarse en el hilo de fondo.
+        val limite = System.currentTimeMillis() + 90_000
+        var listo = false
+        while (!listo && System.currentTimeMillis() < limite) {
+            Thread.sleep(1000)
+            actividad.scenario.onActivity { a ->
+                val caja = a.window.decorView.findViewWithTag<LinearLayout>("pasos-calculadora")
+                listo = caja != null && caja.childCount > 1
+            }
+        }
+        capturar("3-paso-a-paso")
+        // Se deja apagado, como estaba.
+        onView(withTagValue(equalTo("paso-a-paso-calculadora" as Any))).perform(scrollTo(), click())
+        assertTrue("el desarrollo no llegó", listo)
     }
 }
