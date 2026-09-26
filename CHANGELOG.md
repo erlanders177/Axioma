@@ -75,6 +75,8 @@ guarda ya compilado y está listo mucho antes.
 - En el navegador, **Ecuaciones y Cálculo congelaban la página** la primera vez
   mientras cargaban sympy. Ahora trabajan en el hilo aparte.
 - En el navegador, la tecla **Ans** no funcionaba.
+- `(2)²` y `π²` daban error: se colaba una multiplicación delante del «²».
+  Con la tecla x², que ahora escribe «²», se habría notado a menudo.
 
 ---
 
