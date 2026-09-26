@@ -100,7 +100,7 @@ print("OK")
 
     entorno = dict(os.environ)
     entorno["QT_QPA_PLATFORM"] = "offscreen"
-    entorno.setdefault("APPDATA", tempfile.mkdtemp(prefix="axioma_spec_"))
+    entorno["APPDATA"] = tempfile.mkdtemp(prefix="axioma_spec_")
 
     resultado = subprocess.run(
         [sys.executable, "-c", guion],

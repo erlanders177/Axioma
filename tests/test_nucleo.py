@@ -12,8 +12,8 @@ import tempfile
 
 # La configuración y el historial se escriben en el perfil del usuario; durante
 # las pruebas se redirigen a una carpeta temporal.
-os.environ.setdefault("APPDATA", tempfile.mkdtemp(prefix="axioma_test_"))
-os.environ.setdefault("XDG_DATA_HOME", os.environ["APPDATA"])
+os.environ["APPDATA"] = tempfile.mkdtemp(prefix="axioma_test_")
+os.environ["XDG_DATA_HOME"] = os.environ["APPDATA"]
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest  # noqa: E402

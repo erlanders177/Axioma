@@ -11,8 +11,8 @@ import os
 import sys
 import tempfile
 
-os.environ.setdefault("APPDATA", tempfile.mkdtemp(prefix="axioma_extras_"))
-os.environ.setdefault("XDG_DATA_HOME", os.environ["APPDATA"])
+os.environ["APPDATA"] = tempfile.mkdtemp(prefix="axioma_extras_")
+os.environ["XDG_DATA_HOME"] = os.environ["APPDATA"]
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest  # noqa: E402
