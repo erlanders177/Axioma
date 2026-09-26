@@ -85,8 +85,8 @@ class CalculadoraFragment : ApartadoFragment() {
         fila.orientation = LinearLayout.HORIZONTAL
         fila.gravity = Gravity.CENTER_VERTICAL
 
-        val modo = Piezas.desplegable(
-            contexto, listOf("DEG — grados", "RAD — radianes", "GRAD — gradianes"))
+        // Sólo las siglas: comparte fila con otros dos botones y no caben más.
+        val modo = Piezas.desplegable(contexto, listOf("DEG", "RAD", "GRAD"))
         modo.layoutParams = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f)
         modo.onItemSelectedListener = Piezas.alElegir { posicion ->
             modoAngulo = listOf("DEG", "RAD", "GRAD")[posicion]

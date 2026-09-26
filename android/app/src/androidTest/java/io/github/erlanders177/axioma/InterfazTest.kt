@@ -43,6 +43,8 @@ class InterfazTest {
      * memoria compartida; el flujo de GitHub las recoge y las adjunta.
      */
     private fun capturar(nombre: String) {
+        // Primero la pantalla a la vista: pulsar las teclas de abajo la saca.
+        onView(withTagValue(equalTo("entrada" as Any))).perform(scrollTo())
         Thread.sleep(300)
         val salida = InstrumentationRegistry.getInstrumentation().uiAutomation
             .executeShellCommand("screencap -p /sdcard/Download/axioma-$nombre.png")

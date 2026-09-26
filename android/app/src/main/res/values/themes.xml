@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Tema.Axioma" parent="Theme.Material3.DayNight.NoActionBar">
+    <!-- Oscuro siempre: los colores de la aplicación son los del tema oscuro de
+         las otras dos versiones. Con «DayNight», un móvil en modo claro pintaba
+         texto oscuro sobre esos paneles oscuros y los desplegables no se leían. -->
+    <style name="Tema.Axioma" parent="Theme.Material3.Dark.NoActionBar">
         <item name="colorPrimary">@color/acento</item>
         <item name="android:statusBarColor">@color/panel</item>
         <item name="android:navigationBarColor">@color/panel</item>
