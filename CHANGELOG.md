@@ -4,6 +4,80 @@ Las versiones siguen [SemVer](https://semver.org/lang/es/).
 
 ---
 
+## 5.1.0
+
+Tres cosas nuevas, en las tres versiones (Windows, navegador y Android) a la
+vez, porque las tres usan el mismo núcleo.
+
+### Resultados exactos, con una tecla para pasar a decimal
+
+Como en las calculadoras del instituto: `√72` da **6√2**, `6/8` da **3/4**,
+`sin 45` da **√2/2** y `1/(1+√2)` da **√2 − 1**, ya simplificado y sin raíces en
+el denominador. La tecla **S⇔D** cambia entre esa forma y el decimal
+(8.48528, 0.75, 0.707107…). Cuando el resultado es un número entero no hay nada
+que cambiar y la tecla se apaga.
+
+Salen exactos las fracciones, las raíces cuadradas y cúbicas, π y e, y los
+valores notables de seno, coseno y tangente (15°, 30°, 45°, 60°, 75°… también
+en radianes: `sin(π/4)`). Lo que no tiene una forma exacta que sirva de algo
+(`sin 1°`, `ln 3`) sale en decimal, como siempre.
+
+**La garantía:** cada resultado exacto se calcula aparte y se compara con el
+decimal de siempre. Si no coinciden, se enseña el decimal. Nunca un exacto que
+diga otra cosa.
+
+Y va al instante: no usa sympy, que en el navegador tardaba de 5 a 25 segundos
+en cargar.
+
+### Fracciones sin paréntesis
+
+La **tecla de fracción** pone dos huecos, uno arriba y otro abajo. Lo que se
+escribe en cada hueco va entero al numerador o al denominador: «2 + 3» sobre
+«4 + 5» es 5/9, sin un solo paréntesis. Las flechas ◀ ▶ pasan de un hueco a
+otro y salen de la fracción. Si antes de pulsarla ya hay un número, ese número
+sube al numerador.
+
+Con el teclado del ordenador, la **`/`** hace lo mismo y respeta la prioridad:
+`1/2+1/3` son dos fracciones, y da 5/6.
+
+La pantalla dibuja las fracciones con su raya y las raíces con su signo, igual
+que el resultado.
+
+Además, tras pulsar «=», la cuenta sigue desde el resultado si lo siguiente es
+un operador (**Ans + …**, como en cualquier calculadora escolar), y empieza de
+nuevo si es un número. Las flechas o el borrado vuelven a la expresión para
+corregirla.
+
+### Paso a paso, si se quiere
+
+El botón **Paso a paso** enseña cómo se llega al resultado, y se queda encendido
+o apagado como se deje:
+
+- **Calculadora:** sumar fracciones con denominador común, sacar factores de
+  una raíz (√72 = √(36·2) = √36·√2 = 6√2), racionalizar, valores notables…
+- **Geometría:** la fórmula con los datos sustituidos (V = π·r²·h = π·5²·10 =
+  250π ≈ 785.398 cm³).
+- **Conversiones:** el factor o la fórmula (5 km × 1000 = 5000 m; °F = °C × 9/5
+  + 32).
+- **Ecuaciones, derivadas e integrales:** el desarrollo que ya tenía la versión
+  de Windows llega también al navegador y a Android.
+
+En el navegador el desarrollo se hace en un hilo aparte: la calculadora sigue
+respondiendo mientras sympy se prepara, y a partir de la segunda vez sympy se
+guarda ya compilado y está listo mucho antes.
+
+### Corregido
+
+- **Las pruebas automáticas escribían en los datos de verdad.** En Windows,
+  pasar las pruebas en el mismo ordenador en el que se usa Axioma le llenaba el
+  historial de cuentas de prueba y le cambiaba las preferencias. Ahora las
+  pruebas trabajan siempre en una carpeta temporal.
+- En el navegador, **Ecuaciones y Cálculo congelaban la página** la primera vez
+  mientras cargaban sympy. Ahora trabajan en el hilo aparte.
+- En el navegador, la tecla **Ans** no funcionaba.
+
+---
+
 ## 5.0.2
 
 ### Las actualizaciones, de verdad

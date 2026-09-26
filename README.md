@@ -29,7 +29,7 @@ núcleo en Python.
 
 | Módulo | Qué hace |
 |--------|----------|
-| **Calculadora** | Científica completa: trigonometría directa e inversa, hiperbólicas, logaritmos, factorial, memoria, grados/radianes/gradianes, variables propias y vista previa mientras se escribe. Además **opera con unidades**: `5 km + 300 m` da `5.3 km`. |
+| **Calculadora** | Científica completa: trigonometría directa e inversa, hiperbólicas, logaritmos, factorial, memoria, grados/radianes/gradianes, variables propias y vista previa mientras se escribe. **Resultados exactos** como en clase (`√72` → `6√2`, `sin 45` → `√2/2`, `0.1+0.2` → `3/10`) con la tecla **S⇔D** para pasar a decimal, y una **tecla de fracción de dos huecos** para escribir fracciones sin paréntesis. Además **opera con unidades**: `5 km + 300 m` da `5.3 km`. |
 | **Gráficas** | Hasta cuatro funciones a la vez, con cortes, extremos y límites calculados automáticamente. Zoom, arrastre y exportación de la imagen. |
 | **Conversiones** | **51 magnitudes y 555 unidades**, con buscador y equivalencias simultáneas en toda la categoría. |
 | **Bases numéricas** | Bases 2 a 36 con signo, decimales y prefijos `0x`/`0b`/`0o`. Complemento a dos y operaciones bit a bit. |
@@ -94,9 +94,11 @@ búsqueda, restauración con doble clic y exportación a CSV o TXT.
 
 ### Paso a paso
 
-Axioma no se limita a dar el resultado: en ecuaciones, sistemas, derivadas e
-integrales muestra el desarrollo completo, nombrando la regla aplicada en cada
-punto y comprobando el resultado al final.
+Axioma no se limita a dar el resultado: con el botón **Paso a paso** muestra el
+desarrollo de las cuentas de la calculadora (fracciones, raíces, racionalizar),
+de la geometría (la fórmula con los datos sustituidos), de las conversiones, y
+de ecuaciones, sistemas, derivadas e integrales, nombrando la regla aplicada en
+cada punto y comprobando el resultado al final.
 
 ```
 1. Es una ecuación de segundo grado
