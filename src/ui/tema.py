@@ -154,6 +154,11 @@ def hoja_de_estilos(p: Paleta) -> str:
         background-color: {p.acento};
         color: {p.acento_texto};
     }}
+    /* Un botón que se queda encendido (Paso a paso, S⇔D): borde y texto de acento. */
+    QPushButton:checked {{
+        border: 1px solid {p.acento};
+        color: {p.acento};
+    }}
     QPushButton:disabled {{
         color: {p.texto_suave};
         background-color: {p.fondo_panel};
@@ -283,6 +288,11 @@ def hoja_de_estilos(p: Paleta) -> str:
         font-size: 30px;
         font-weight: 500;
         padding: 12px 14px;
+    }}
+    QFrame[clase="pantalla"] {{
+        background-color: {p.fondo_panel};
+        border: 1px solid {p.borde};
+        border-radius: 10px;
     }}
     QLabel[clase="pantalla-previa"] {{
         color: {p.texto_suave};

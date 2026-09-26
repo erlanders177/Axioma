@@ -1,25 +1,39 @@
-"""Calculadora científica con historial."""
+"""Calculadora científica con historial, fracciones de dos huecos y resultado exacto.
+
+Qué hace cada tecla lo decide el núcleo (:class:`core.calculadora.Calculadora`),
+el mismo que usan la web y Android. Este panel le pasa las teclas y dibuja la
+pantalla que devuelve: lo escrito con sus fracciones, y el resultado exacto
+(√2/2, 3/4) o en decimal con la tecla S⇔D.
+"""
 
 from __future__ import annotations
 
-from PyQt5.QtCore import QEvent, Qt
-from PyQt5.QtGui import QKeySequence
+from PyQt5.QtCore import QEvent, QPointF, QRectF, Qt
+from PyQt5.QtGui import QColor, QIcon, QKeySequence, QPainter, QPen, QPixmap
 from PyQt5.QtWidgets import (
-    QComboBox, QGridLayout, QHBoxLayout, QLineEdit, QShortcut, QSizePolicy,
+    QComboBox, QFrame, QGridLayout, QHBoxLayout, QShortcut, QSizePolicy,
     QVBoxLayout, QWidget,
 )
 
 from ..core import historial as hist
-from ..core import magnitudes
 from ..core import variables as vars_compartidas
+from ..core.calculadora import Calculadora
 from ..core.config import config
-from ..core.evaluador import ErrorExpresion, evaluar, parentesis_pendientes
+from ..core.evaluador import ErrorExpresion, evaluar
 from ..core.formato import formatear
-from .comunes import PanelModulo, aviso, boton, etiqueta, tarjeta
+from .comunes import PanelModulo, boton, etiqueta, tarjeta
+from .formula import EntradaNatural, Formula
+from .paso_a_paso import PasoAPaso
 
-#: Cada tecla es (etiqueta, clase, inserción, etiqueta alterna, inserción alterna).
-#: Las inserciones que empiezan por ``#`` son órdenes, no texto.
+#: Cada tecla es (etiqueta, clase, orden, etiqueta alterna, orden alterna).
+#: Una orden que empieza por ``#`` es una tecla de la calculadora del núcleo
+#: (``#fraccion``, ``#sd``…) o del panel (``#segunda``); el resto es texto que
+#: se escribe tal cual.
 _TECLAS: list[list[tuple]] = [
+    [("◄", "tecla-funcion", "#izquierda"), ("►", "tecla-funcion", "#derecha"),
+     ("", "tecla-operador", "#fraccion"), ("S⇔D", "tecla-funcion", "#sd"),
+     ("▲", "tecla-funcion", "#arriba"), ("▼", "tecla-funcion", "#abajo")],
+
     [("2ⁿᵈ", "tecla-funcion", "#segunda"), ("π", "tecla-funcion", "π"),
      ("e", "tecla-funcion", "e"), ("(", "tecla-operador", "("),
      (")", "tecla-operador", ")"), ("C", "tecla-borrar", "#limpiar")],
@@ -28,31 +42,92 @@ _TECLAS: list[list[tuple]] = [
      ("cos", "tecla-funcion", "cos(", "acos", "acos("),
      ("tan", "tecla-funcion", "tan(", "atan", "atan("),
      ("xʸ", "tecla-operador", "^"),
-     ("√", "tecla-funcion", "sqrt(", "∛", "cbrt("),
-     ("⌫", "tecla-borrar", "#retroceso")],
+     ("√", "tecla-funcion", "√(", "∛", "∛("),
+     ("⌫", "tecla-borrar", "#borrar")],
 
-    [("ln", "tecla-funcion", "ln(", "eˣ", "exp("),
-     ("log", "tecla-funcion", "log10(", "10ˣ", "10^("),
-     ("x²", "tecla-funcion", "^2", "x³", "^3"),
+    [("ln", "tecla-funcion", "ln(", "eˣ", "e^("),
+     ("log", "tecla-funcion", "log(", "10ˣ", "10^("),
+     ("x²", "tecla-funcion", "²", "x³", "³"),
      ("1/x", "tecla-funcion", "#inverso"),
      ("|x|", "tecla-funcion", "abs("),
      ("mod", "tecla-funcion", "mod(")],
 
     [("7", "tecla", "7"), ("8", "tecla", "8"), ("9", "tecla", "9"),
-     ("÷", "tecla-operador", "/"), ("n!", "tecla-funcion", "!"),
+     ("÷", "tecla-operador", "÷"), ("n!", "tecla-funcion", "!"),
      ("%", "tecla-funcion", "%")],
 
     [("4", "tecla", "4"), ("5", "tecla", "5"), ("6", "tecla", "6"),
-     ("×", "tecla-operador", "*"), ("floor", "tecla-funcion", "floor(", "ceil", "ceil("),
-     ("Ans", "tecla-funcion", "ans")],
+     ("×", "tecla-operador", "×"), ("floor", "tecla-funcion", "floor(", "ceil", "ceil("),
+     ("Ans", "tecla-funcion", "Ans")],
 
     [("1", "tecla", "1"), ("2", "tecla", "2"), ("3", "tecla", "3"),
-     ("−", "tecla-operador", "-"), ("sinh", "tecla-funcion", "sinh(", "cosh", "cosh("),
-     ("τ", "tecla-funcion", "tau")],
+     ("−", "tecla-operador", "−"), ("sinh", "tecla-funcion", "sinh(", "cosh", "cosh("),
+     ("τ", "tecla-funcion", "τ")],
 
-    [("±", "tecla-funcion", "#signo"), ("0", "tecla", "0"), (",", "tecla", "."),
+    [("(−)", "tecla-funcion", "#negativo"), ("0", "tecla", "0"), (",", "tecla", "."),
      ("+", "tecla-operador", "+"), ("=", "tecla-igual", "#calcular")],
 ]
+
+#: Órdenes del núcleo que tienen tecla propia.
+_ORDENES_DEL_NUCLEO = {
+    "#izquierda": "izquierda", "#derecha": "derecha", "#arriba": "arriba",
+    "#abajo": "abajo", "#fraccion": "fraccion", "#sd": "sd", "#limpiar": "limpiar",
+    "#borrar": "borrar", "#negativo": "negativo", "#calcular": "calcular",
+}
+
+
+def _icono_fraccion(color: str, tamano: int = 22) -> QIcon:
+    """La tecla de fracción: dos huecos y la raya, que es lo que hace."""
+    lienzo = QPixmap(tamano, tamano)
+    lienzo.fill(Qt.transparent)
+    pintor = QPainter(lienzo)
+    pintor.setRenderHint(QPainter.Antialiasing)
+    pintor.setPen(QPen(QColor(color), 1.6))
+    caja_ancho, caja_alto = tamano * 0.46, tamano * 0.32
+    izquierda = (tamano - caja_ancho) / 2
+    pintor.drawRoundedRect(QRectF(izquierda, 1, caja_ancho, caja_alto), 2, 2)
+    pintor.drawRoundedRect(QRectF(izquierda, tamano - caja_alto - 1, caja_ancho, caja_alto), 2, 2)
+    pintor.drawLine(QPointF(tamano * 0.18, tamano / 2), QPointF(tamano * 0.82, tamano / 2))
+    pintor.end()
+    return QIcon(lienzo)
+
+
+class _Pantalla(QFrame):
+    """Lo escrito arriba y el resultado debajo, como en una calculadora escolar.
+
+    Conserva ``setText``, ``text`` y ``clear`` de la antigua línea de texto:
+    así el resto de la aplicación (el historial, las pruebas) la sigue usando
+    igual.
+    """
+
+    def __init__(self, panel: PanelCalculadora) -> None:
+        super().__init__()
+        self._panel = panel
+        self.setProperty("clase", "pantalla")
+        columna = QVBoxLayout(self)
+        columna.setContentsMargins(12, 8, 12, 8)
+        columna.setSpacing(2)
+        self.entrada = EntradaNatural(28)
+        self.entrada.setToolTip(
+            "Escriba con el teclado: «/» hace una fracción y las flechas se mueven\n"
+            "por ella. Funciones: sin, cos, tan, ln, log, sqrt, abs, mod, gcd…\n"
+            "Variables: escriba «r = 5» y luego podrá usar r en otras expresiones."
+        )
+        self.resultado = Formula(30)
+        columna.addWidget(self.entrada)
+        columna.addWidget(self.resultado)
+
+    def setText(self, texto: str) -> None:                          # noqa: N802
+        self._panel.cargar(texto)
+
+    def text(self) -> str:
+        return self._panel.texto_en_pantalla()
+
+    def clear(self) -> None:
+        self._panel.limpiar()
+
+    def setFocus(self, *args) -> None:                               # noqa: N802
+        self.entrada.setFocus(*args)
 
 
 class PanelCalculadora(PanelModulo):
@@ -61,10 +136,11 @@ class PanelCalculadora(PanelModulo):
 
     def __init__(self, padre: QWidget | None = None) -> None:
         super().__init__(padre)
-        self.memoria = 0.0
-        self.ultimo_resultado = 0.0
+        self.calc = Calculadora(config["modo_angulo"], config["decimales"])
         self.segunda_activa = False
         self._teclas_alternas: list[tuple] = []
+        self._paleta = None
+        self._estado: dict = {}
         #: Las variables son compartidas con la barra de cálculo y con el resto
         #: de módulos, así que viven en `core.variables`, no aquí.
         #: Expresiones ya calculadas, para recorrerlas con las flechas ↑/↓.
@@ -74,13 +150,27 @@ class PanelCalculadora(PanelModulo):
         self._construir()
         self._atajos()
         self._cargar_expresiones_previas()
+        self._pintar(self.calc.estado())
+
+    # --------------------------------------------------- memoria y Ans -- #
+
+    @property
+    def memoria(self) -> float:
+        return self.calc.memoria
+
+    @memoria.setter
+    def memoria(self, valor: float) -> None:
+        self.calc.memoria = valor
+
+    @property
+    def ultimo_resultado(self) -> float:
+        return self.calc.ans
 
     # ------------------------------------------------------------------ UI -- #
 
     def _construir(self) -> None:
         raiz = QHBoxLayout(self)
         raiz.setContentsMargins(0, 0, 0, 0)
-
         raiz.addWidget(self._crear_columna_calculadora())
 
     def _crear_columna_calculadora(self) -> QWidget:
@@ -90,32 +180,20 @@ class PanelCalculadora(PanelModulo):
         columna.setSpacing(10)
 
         # -- pantalla ------------------------------------------------------- #
-        marco, col = tarjeta(espaciado=4)
-        self.pantalla = QLineEdit()
-        self.pantalla.setProperty("clase", "pantalla")
-        self.pantalla.setAlignment(Qt.AlignRight)
-        self.pantalla.setPlaceholderText("0")
-        self.pantalla.setToolTip(
-            "Puede escribir directamente con el teclado.\n"
-            "Funciones: sin, cos, tan, ln, log, sqrt, abs, mod, gcd…\n"
-            "Variables: escriba «r = 5» y luego podrá usar r en otras expresiones."
-        )
-        self.pantalla.textChanged.connect(self._actualizar_vista_previa)
-        self.pantalla.returnPressed.connect(self.calcular)
-        col.addWidget(self.pantalla)
-
-        self.vista_previa = etiqueta("", "pantalla-previa")
-        self.vista_previa.setAlignment(Qt.AlignRight)
-        self.vista_previa.setMinimumHeight(20)
-        col.addWidget(self.vista_previa)
+        self.pantalla = _Pantalla(self)
+        self.pantalla.entrada.tecla.connect(self._tecla)
+        self.pantalla.entrada.vertical.connect(self._vertical)
+        self.pantalla.entrada.copiar.connect(self._copiar)
+        columna.addWidget(self.pantalla)
 
         self.etiqueta_variables = etiqueta("", "nota", ajustar=True)
         self.etiqueta_variables.setVisible(False)
-        col.addWidget(self.etiqueta_variables)
-        columna.addWidget(marco)
+        columna.addWidget(self.etiqueta_variables)
 
-        # -- barra de modo y memoria ---------------------------------------- #
+        # -- barra de modo, memoria y paso a paso --------------------------- #
         columna.addLayout(self._crear_barra_modo())
+
+        columna.addWidget(self.paso_a_paso.caja)
 
         # -- teclado -------------------------------------------------------- #
         marco_teclas, col_teclas = tarjeta(margen=10, espaciado=0)
@@ -148,10 +226,14 @@ class PanelCalculadora(PanelModulo):
         self.etiqueta_memoria = etiqueta("M = 0", "subtitulo")
         fila.addWidget(self.etiqueta_memoria)
         fila.addStretch()
+
+        self.paso_a_paso = PasoAPaso("calculadora", self.calc.pasos)
+        self.boton_pasos = self.paso_a_paso.boton
+        fila.addWidget(self.boton_pasos)
         # El botón de borrar variables está en la barra de cálculo, que se ve
         # desde aquí: tenerlo dos veces sólo ocupa sitio.
         fila.addWidget(boton("Copiar", "", self._copiar,
-                             tooltip="Copiar el contenido de la pantalla"))
+                             tooltip="Copiar el resultado (o lo escrito)"))
         return fila
 
     def _crear_teclado(self) -> QGridLayout:
@@ -162,13 +244,23 @@ class PanelCalculadora(PanelModulo):
             for columna, especificacion in enumerate(teclas):
                 titulo, clase, orden = especificacion[0], especificacion[1], especificacion[2]
                 widget = boton(titulo, clase)
-                widget.setMinimumHeight(46)
+                widget.setMinimumHeight(42)
                 # Ignored: las teclas se reparten el ancho que haya en lugar de
                 # exigir el de su texto. Con la calculadora compartiendo
                 # pantalla con otros apartados, ese ancho puede ser poco.
                 widget.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
                 widget.setFocusPolicy(Qt.NoFocus)
                 widget.clicked.connect(lambda _, o=orden: self._pulsar(o))
+
+                if orden == "#fraccion":
+                    self.boton_fraccion = widget
+                    widget.setIcon(_icono_fraccion("#4a9eff"))
+                    widget.setToolTip("Fracción: un hueco arriba y otro abajo.\n"
+                                      "Las flechas pasan de uno a otro y salen.")
+                elif orden == "#sd":
+                    self.boton_sd = widget
+                    widget.setCheckable(True)
+                    widget.setToolTip("Resultado exacto (√2/2) o decimal (0.707107)")
 
                 # La tecla «=» ocupa las dos últimas columnas de su fila.
                 if clase == "tecla-igual":
@@ -193,21 +285,24 @@ class PanelCalculadora(PanelModulo):
         escape = QShortcut(QKeySequence("Escape"), self, self.limpiar)
         escape.setContext(Qt.WidgetWithChildrenShortcut)
 
-        # Las flechas ↑/↓ recorren las expresiones anteriores, como en una
-        # terminal. Se filtran en la pantalla porque un QLineEdit no las usa.
-        self.pantalla.installEventFilter(self)
-
     # ------------------------------------------------ historial de expresiones -- #
 
     def eventFilter(self, objeto, evento):  # noqa: N802 (nombre impuesto por Qt)
-        if objeto is self.pantalla and evento.type() == QEvent.KeyPress:
+        if objeto in (self.pantalla, self.pantalla.entrada) and evento.type() == QEvent.KeyPress:
             if evento.key() == Qt.Key_Up:
-                self._recorrer_historial(-1)
+                self._vertical(-1)
                 return True
             if evento.key() == Qt.Key_Down:
-                self._recorrer_historial(1)
+                self._vertical(1)
                 return True
         return super().eventFilter(objeto, evento)
+
+    def _vertical(self, salto: int) -> None:
+        """↑/↓: dentro de una fracción, de un hueco a otro; fuera, el historial."""
+        if not self.calc.calculado and self.calc.editor._padre() is not None:
+            self._tecla("arriba" if salto < 0 else "abajo")
+        else:
+            self._recorrer_historial(salto)
 
     def _cargar_expresiones_previas(self) -> None:
         """Rellena la lista de flechas con lo que ya había guardado en disco."""
@@ -237,7 +332,7 @@ class PanelCalculadora(PanelModulo):
         # Al salir por primera vez de la línea actual se guarda lo escrito, para
         # poder recuperarlo bajando del todo.
         if self._posicion_historial == len(self._expresiones):
-            self._borrador = self.pantalla.text()
+            self._borrador = self.calc.texto()
 
         destino = self._posicion_historial + salto
         destino = max(0, min(len(self._expresiones), destino))
@@ -247,61 +342,49 @@ class PanelCalculadora(PanelModulo):
 
         texto = (self._borrador if destino == len(self._expresiones)
                  else self._expresiones[destino])
-        self.pantalla.setText(texto)
-        self.pantalla.setCursorPosition(len(texto))
+        self.cargar(texto)
 
     # -------------------------------------------------------------- órdenes -- #
 
     def _pulsar(self, orden: str) -> None:
-        if not orden.startswith("#"):
-            self._insertar(orden)
-            return
+        if orden in _ORDENES_DEL_NUCLEO:
+            self._tecla(_ORDENES_DEL_NUCLEO[orden])
+        elif orden == "#segunda":
+            self._alternar_segunda()
+        elif orden == "#inverso":
+            self._tecla("escribir", "^(−1)")
+        else:
+            self._tecla("insertar", orden)
+        self.pantalla.entrada.setFocus()
 
-        acciones = {
-            "#calcular": self.calcular,
-            "#limpiar": self.limpiar,
-            "#retroceso": self._retroceso,
-            "#signo": self._cambiar_signo,
-            "#inverso": self._inverso,
-            "#segunda": self._alternar_segunda,
-        }
-        accion = acciones.get(orden)
-        if accion:
-            accion()
+    def _tecla(self, orden: str, argumento: str = "") -> None:
+        """Una tecla al núcleo, y a dibujar cómo queda la pantalla."""
+        self.calc.modo = config["modo_angulo"]
+        self.calc.decimales = config["decimales"]
+        self._pintar(self.calc.tecla(orden, argumento))
 
-    def _insertar(self, texto: str) -> None:
-        self.pantalla.insert(texto)
-        self.pantalla.setFocus()
+    def calcular(self) -> None:
+        self._tecla("calcular")
+
+    def cargar(self, texto: str) -> None:
+        """Pone un texto en la pantalla (del historial, de las flechas…)."""
+        self._tecla("cargar", str(texto))
+        self.pantalla.entrada.setFocus()
 
     def limpiar(self) -> None:
-        self.pantalla.clear()
-        self.vista_previa.clear()
-        self.pantalla.setFocus()
+        self._tecla("limpiar")
+        self.pantalla.entrada.setFocus()
 
-    def _retroceso(self) -> None:
-        if self.pantalla.hasSelectedText():
-            self.pantalla.del_()
-        else:
-            self.pantalla.backspace()
-        self.pantalla.setFocus()
+    def texto_en_pantalla(self) -> str:
+        """El resultado si se acaba de calcular; si no, lo escrito."""
+        visible = self._estado.get("resultado")
+        if self._estado.get("calculado") and visible:
+            return visible["texto"]
+        return self.calc.texto()
 
-    def _cambiar_signo(self) -> None:
-        texto = self.pantalla.text().strip()
-        if not texto:
-            self._insertar("-")
-        elif texto.startswith("-(") and texto.endswith(")"):
-            self.pantalla.setText(texto[2:-1])
-        else:
-            self.pantalla.setText(f"-({texto})")
-        self.pantalla.setFocus()
-
-    def _inverso(self) -> None:
-        texto = self.pantalla.text().strip()
-        if texto:
-            self.pantalla.setText(f"1/({texto})")
-        else:
-            self._insertar("1/")
-        self.pantalla.setFocus()
+    def error(self) -> str:
+        """El aviso de error que hay en pantalla, o vacío."""
+        return self._estado.get("error") or ""
 
     def _alternar_segunda(self) -> None:
         self.segunda_activa = not self.segunda_activa
@@ -314,9 +397,10 @@ class PanelCalculadora(PanelModulo):
 
     def _cambiar_angulo(self, indice: int) -> None:
         config["modo_angulo"] = ["DEG", "RAD", "GRAD"][indice]
-        self._actualizar_vista_previa()
+        self.calc.modo = config["modo_angulo"]
+        self._pintar(self.calc.estado())
 
-    # ------------------------------------------------------------- cálculo -- #
+    # ------------------------------------------------------------- pantalla -- #
 
     @property
     def _modo(self) -> str:
@@ -327,148 +411,42 @@ class PanelCalculadora(PanelModulo):
         """Vista de las variables compartidas (la usan las pruebas)."""
         return vars_compartidas.valores()
 
-    def _variables(self) -> dict:
-        entorno = {"ans": self.ultimo_resultado, "mem": self.memoria}
-        entorno.update(vars_compartidas.valores())
-        return entorno
+    def _pintar(self, estado: dict) -> None:
+        self._estado = estado
+        entrada, resultado = self.pantalla.entrada, self.pantalla.resultado
 
-    @staticmethod
-    def _separar_asignacion(expresion: str) -> tuple[str, str] | None:
-        """Detecta «nombre = expresión» y devuelve (nombre, expresión).
+        entrada.poner_tamano(20 if estado["calculado"] else 28)
+        entrada.poner(estado["entrada"], suave=estado["calculado"])
 
-        Se excluyen ``==``, ``<=`` y ``>=`` para no confundir una comparación con
-        una asignación.
-        """
-        if expresion.count("=") != 1:
-            return None
-        izquierda, _, derecha = expresion.partition("=")
-        if derecha.startswith("=") or izquierda.rstrip()[-1:] in "<>!":
-            return None
-        nombre = izquierda.strip()
-        if not nombre.isidentifier() or not derecha.strip():
-            return None
-        return nombre, derecha.strip()
+        visible = estado["resultado"]
+        if estado["error"]:
+            resultado.poner_tamano(15)
+            resultado.poner_texto(estado["error"], color="error")
+        elif visible:
+            resultado.poner_tamano(30)
+            resultado.poner(visible["arbol"])
+        else:
+            resultado.poner_tamano(15)
+            resultado.poner_texto(estado["previa"], color="suave")
 
-    def _actualizar_vista_previa(self) -> None:
-        texto = self.pantalla.text().strip()
-        if not texto:
-            self.vista_previa.clear()
-            return
+        self.boton_sd.setEnabled(bool(visible and visible["tiene_exacto"]))
+        self.boton_sd.setChecked(bool(visible and visible["en_decimal"]))
 
-        asignacion = self._separar_asignacion(texto)
-        cuerpo = asignacion[1] if asignacion else texto
+        anotar = estado["anotar"]
+        if anotar:
+            self._recordar(anotar["expresion"])
+            self._posicion_historial = len(self._expresiones)
+            self._borrador = ""
+            self.guardar_en_historial(anotar["texto"], {
+                "expresion": anotar["expresion"],
+                "resultado": anotar["resultado"],
+                "modo_angulo": self._modo,
+            })
+            if visible and visible["variable"]:
+                self._refrescar_variables()
+            self.paso_a_paso.refrescar()
 
-        # Se cierran los paréntesis pendientes para poder previsualizar mientras
-        # el usuario sigue escribiendo.
-        tentativa = cuerpo + ")" * parentesis_pendientes(cuerpo)
-
-        if magnitudes.contiene_unidades(tentativa):
-            try:
-                cantidad = magnitudes.evaluar(tentativa)
-            except magnitudes.ErrorMagnitud:
-                self.vista_previa.clear()
-                return
-            prefijo = f"{asignacion[0]} = " if asignacion else "= "
-            self.vista_previa.setText(prefijo + cantidad.texto(config["decimales"]))
-            return
-
-        try:
-            valor = evaluar(tentativa, self._modo, self._variables())
-        except ErrorExpresion:
-            self.vista_previa.clear()
-            return
-
-        prefijo = f"{asignacion[0]} = " if asignacion else "= "
-        self.vista_previa.setText(prefijo + formatear(valor, config["decimales"]))
-
-    def calcular(self) -> None:
-        expresion = self.pantalla.text().strip()
-        if not expresion:
-            return
-
-        asignacion = self._separar_asignacion(expresion)
-        if asignacion:
-            self._asignar(*asignacion)
-            return
-
-        # Las expresiones con unidades («5 km + 300 m») las resuelve el motor de
-        # magnitudes; el resto, el evaluador normal.
-        if magnitudes.contiene_unidades(expresion):
-            self._calcular_con_unidades(expresion)
-            return
-
-        try:
-            valor = evaluar(expresion, self._modo, self._variables())
-        except ErrorExpresion as e:
-            aviso(self, str(e), "No se pudo calcular")
-            return
-
-        texto_resultado = formatear(valor, config["decimales"])
-        self.ultimo_resultado = valor
-        self.pantalla.setText(texto_resultado)
-        self.pantalla.setCursorPosition(len(texto_resultado))
-        self.vista_previa.setText(f"{expresion} =")
-
-        self._recordar(expresion)
-        self._posicion_historial = len(self._expresiones)
-        self._borrador = ""
-
-        operacion = f"{expresion} = {texto_resultado}"
-        self.guardar_en_historial(operacion, {
-            "expresion": expresion,
-            "resultado": texto_resultado,
-            "modo_angulo": self._modo,
-        })
-
-    def _calcular_con_unidades(self, expresion: str) -> None:
-        try:
-            cantidad = magnitudes.evaluar(expresion)
-        except magnitudes.ErrorMagnitud as e:
-            aviso(self, str(e), "Unidades")
-            return
-
-        texto_resultado = cantidad.texto(config["decimales"])
-        # `ans` guarda el número sin unidad, para poder seguir operando con él.
-        self.ultimo_resultado = cantidad.valor
-        self.pantalla.setText(texto_resultado)
-        self.pantalla.setCursorPosition(len(texto_resultado))
-        self.vista_previa.setText(f"{expresion} =")
-
-        self._recordar(expresion)
-        self._posicion_historial = len(self._expresiones)
-        self._borrador = ""
-
-        self.guardar_en_historial(f"{expresion} = {texto_resultado}", {
-            "expresion": expresion,
-            "resultado": texto_resultado,
-            "modo_angulo": self._modo,
-        })
-
-    def _asignar(self, nombre: str, cuerpo: str) -> None:
-        """Guarda una variable del usuario: ``r = 5`` y luego ``pi*r^2``."""
-        try:
-            valor = evaluar(cuerpo, self._modo, self._variables())
-        except ErrorExpresion as e:
-            aviso(self, str(e), "No se pudo calcular")
-            return
-
-        try:
-            vars_compartidas.definir(nombre, valor)
-        except vars_compartidas.ErrorVariable as e:
-            aviso(self, str(e), "Variable")
-            return
-        self.ultimo_resultado = valor
-        texto_valor = formatear(valor, config["decimales"])
-        self.vista_previa.setText(f"{nombre} = {texto_valor}   (guardada)")
-        self.pantalla.clear()
-        self._refrescar_variables()
-
-        operacion = f"{nombre} = {cuerpo} = {texto_valor}"
-        self.guardar_en_historial(operacion, {
-            "expresion": f"{nombre} = {cuerpo}",
-            "resultado": texto_valor,
-            "modo_angulo": self._modo,
-        })
+    # ------------------------------------------------------------- variables -- #
 
     def _refrescar_variables(self) -> None:
         resumen = vars_compartidas.resumen(config["decimales"])
@@ -483,27 +461,34 @@ class PanelCalculadora(PanelModulo):
         """Olvida las variables. La acción vive en la barra; esto la comparte."""
         vars_compartidas.borrar_todas()
         self._refrescar_variables()
-        self.pantalla.setFocus()
+        self.pantalla.entrada.setFocus()
 
     # ------------------------------------------------------------- memoria -- #
 
+    def _valor_en_pantalla(self) -> float:
+        visible = self._estado.get("resultado")
+        if self._estado.get("calculado") and visible:
+            return visible["valor"]
+        try:
+            entorno = {"ans": self.calc.ans, "Ans": self.calc.ans, "mem": self.calc.memoria}
+            entorno.update(vars_compartidas.valores())
+            return evaluar(self.calc.editor.lineal(), self._modo, entorno)
+        except (ErrorExpresion, ValueError):
+            return self.calc.ans
+
     def _memoria_limpiar(self) -> None:
-        self.memoria = 0.0
+        self.calc.memoria = 0.0
         self._refrescar_memoria()
 
     def _memoria_leer(self) -> None:
-        self._insertar(formatear(self.memoria, 12))
+        self._tecla("escribir", formatear(self.calc.memoria, 12))
 
     def _memoria_sumar(self, signo: int) -> None:
-        try:
-            valor = evaluar(self.pantalla.text(), self._modo, self._variables())
-        except ErrorExpresion:
-            valor = self.ultimo_resultado
-        self.memoria += signo * valor
+        self.calc.memoria += signo * self._valor_en_pantalla()
         self._refrescar_memoria()
 
     def _refrescar_memoria(self) -> None:
-        self.etiqueta_memoria.setText(f"M = {formatear(self.memoria, 6)}")
+        self.etiqueta_memoria.setText(f"M = {formatear(self.calc.memoria, 6)}")
 
     # --------------------------------------------------------------- varios -- #
 
@@ -511,14 +496,17 @@ class PanelCalculadora(PanelModulo):
         from PyQt5.QtWidgets import QApplication
         portapapeles = QApplication.clipboard()
         if portapapeles is not None:
-            portapapeles.setText(self.pantalla.text())
+            portapapeles.setText(self.texto_en_pantalla())
 
     def restaurar_datos(self, datos: dict) -> None:
         expresion = datos.get("expresion")
         if expresion:
-            self.pantalla.setText(str(expresion))
-            self.pantalla.setFocus()
+            self.cargar(str(expresion))
 
     def aplicar_paleta(self, paleta) -> None:
-        """La calculadora no dibuja gráficos: basta con la hoja de estilos global."""
-        return
+        self._paleta = paleta
+        self.pantalla.entrada.aplicar_paleta(paleta)
+        self.pantalla.resultado.aplicar_paleta(paleta)
+        self.boton_fraccion.setIcon(_icono_fraccion(paleta.acento))
+        self.paso_a_paso.aplicar_paleta(paleta)
+

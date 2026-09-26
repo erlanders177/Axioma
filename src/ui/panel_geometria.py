@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
 )
 
 from ..core import figuras as geo
+from ..core import pasos_cuentas
 from ..core.config import config
 from ..core.formato import formatear, normalizar
 from . import tema
@@ -17,6 +18,7 @@ from .comunes import (
     CampoNumerico, TablaResultados, aviso, boton, etiqueta,
     separador, tarjeta,
 )
+from .paso_a_paso import PasoAPaso
 from .visualizador import LienzoFigura
 
 
@@ -160,8 +162,12 @@ class PanelGeometria(PanelModulo):
         self.formulas = etiqueta("", "nota", ajustar=True)
         col_res.addWidget(self.formulas)
 
+        self.paso_a_paso = PasoAPaso("geometria", self._pasos)
+        col_res.addWidget(self.paso_a_paso.caja)
+
         fila = QHBoxLayout()
         fila.addWidget(boton("Copiar resultados", "", self._copiar))
+        fila.addWidget(self.paso_a_paso.boton)
         fila.addStretch()
         col_res.addLayout(fila)
         columna.addWidget(marco_res, 1)
@@ -448,6 +454,15 @@ class PanelGeometria(PanelModulo):
             self.lienzo.limpiar("No se pudo generar la vista previa")
 
         self._ultimo_calculo = (nombre, valores, resultados)
+        self.paso_a_paso.refrescar()
+
+    def _pasos(self) -> list | None:
+        """La fórmula de cada resultado con los datos sustituidos."""
+        if self._ultimo_calculo is None:
+            return None
+        nombre, valores, _ = self._ultimo_calculo
+        unidad = self._unidad.simbolo if self._unidad is not None else ""
+        return pasos_cuentas.pasos_figura(nombre, valores, unidad, config["decimales"])
 
     def _calcular_y_guardar(self) -> None:
         """Acción del botón principal: calcular y registrar en el historial."""
@@ -493,6 +508,7 @@ class PanelGeometria(PanelModulo):
 
     def aplicar_paleta(self, paleta) -> None:
         self.lienzo.aplicar_paleta(paleta)
+        self.paso_a_paso.aplicar_paleta(paleta)
         self.calcular(silencioso=True)
 
 

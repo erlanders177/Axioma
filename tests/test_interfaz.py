@@ -15,8 +15,8 @@ import tempfile
 
 # Debe fijarse antes de importar Qt.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-os.environ.setdefault("APPDATA", tempfile.mkdtemp(prefix="axioma_ui_"))
-os.environ.setdefault("XDG_DATA_HOME", os.environ["APPDATA"])
+os.environ["APPDATA"] = tempfile.mkdtemp(prefix="axioma_ui_")
+os.environ["XDG_DATA_HOME"] = os.environ["APPDATA"]
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest  # noqa: E402
@@ -164,10 +164,12 @@ def test_cambio_de_tema_no_rompe_ningun_panel(ventana):
 # --------------------------------------------------------------------------- #
 
 @pytest.mark.parametrize("expresion,esperado", [
-    ("2+3*4", "14"), ("sin(30)", "0.5"), ("5!", "120"),
+    ("2+3*4", "14"), ("sin(30)", "1/2"), ("5!", "120"),
     ("sqrt(16)", "4"), ("2^10", "1024"), ("log10(1000)", "3"),
+    ("sqrt(8)", "2√2"), ("1/2+1/3", "5/6"),
 ])
 def test_calculadora_calcula(ventana, expresion, esperado):
+    """El resultado sale exacto cuando lo hay: 1/2 y no 0.5, 2√2 y no 2.82843."""
     calc = panel(ventana, "calculadora")
     calc.pantalla.setText(expresion)
     calc.calcular()
@@ -182,6 +184,8 @@ def test_calculadora_define_variables(ventana):
     assert calc.variables["r"] == 5
     calc.pantalla.setText("pi*r^2")
     calc.calcular()
+    assert calc.pantalla.text() == "25π"
+    calc._pulsar("#sd")                      # S⇔D: el mismo resultado en decimal
     assert calc.pantalla.text().startswith("78.5")
     calc._borrar_variables()
     assert not calc.variables
@@ -191,7 +195,7 @@ def test_calculadora_rechaza_nombre_reservado(ventana):
     calc = panel(ventana, "calculadora")
     calc.pantalla.setText("pi = 3")
     calc.calcular()
-    assert _DIALOGOS, "debería avisar de que el nombre está reservado"
+    assert calc.error(), "debería avisar de que el nombre está reservado"
     assert "pi" not in calc.variables
 
 
@@ -199,7 +203,7 @@ def test_calculadora_avisa_de_expresion_invalida(ventana):
     calc = panel(ventana, "calculadora")
     calc.pantalla.setText("__import__('os')")
     calc.calcular()
-    assert _DIALOGOS
+    assert calc.error()
 
 
 def test_calculadora_memoria(ventana):
@@ -721,7 +725,7 @@ def test_historial_se_restaura_con_doble_clic(ventana):
     calc.calcular()
     calc.pantalla.clear()
     ventana.historial._restaurar_elemento(ventana.historial.lista.item(0))
-    assert calc.pantalla.text() == "3*7"
+    assert calc.pantalla.text() == "3×7"
 
 
 # --------------------------------------------------------------------------- #
@@ -745,13 +749,13 @@ def test_calculadora_avisa_si_las_unidades_no_encajan(ventana):
     calc = panel(ventana, "calculadora")
     calc.pantalla.setText("5 km + 3 kg")
     calc.calcular()
-    assert _DIALOGOS
+    assert calc.error()
 
 
 def test_las_unidades_no_estorban_a_la_aritmetica_normal(ventana):
     """Comprueba que el motor de unidades no secuestra expresiones corrientes."""
     calc = panel(ventana, "calculadora")
-    for expresion, esperado in [("2+3*4", "14"), ("sin(30)", "0.5"), ("5!", "120")]:
+    for expresion, esperado in [("2+3*4", "14"), ("sin(30)", "1/2"), ("5!", "120")]:
         calc.pantalla.setText(expresion)
         calc.calcular()
         assert calc.pantalla.text() == esperado, expresion
@@ -1323,3 +1327,88 @@ def test_no_se_guarda_como_variable_lo_que_no_es_un_numero(ventana, monkeypatch)
                         lambda *a, **k: avisos.append(a))
     assert usar_resultado.guardar_como_variable(ventana, "nada", "sin solución") is None
     assert avisos, "debería avisar en vez de guardar un valor inventado"
+
+
+# --------------------------------------------------------------------------- #
+# Fracciones de dos huecos, resultado exacto y paso a paso
+# --------------------------------------------------------------------------- #
+
+def test_calculadora_fraccion_de_dos_huecos(ventana):
+    """«2 + 3» sobre «4 + 5», sin un solo paréntesis."""
+    calc = panel(ventana, "calculadora")
+    calc.limpiar()
+    for orden in ["#fraccion", "2", "+", "3", "#derecha", "4", "+", "5", "#calcular"]:
+        calc._pulsar(orden)
+    assert calc.pantalla.text() == "5/9"
+
+
+def test_calculadora_tecla_sd(ventana):
+    calc = panel(ventana, "calculadora")
+    calc.pantalla.setText("sqrt(8)")
+    calc.calcular()
+    assert calc.pantalla.text() == "2√2"
+    assert calc.boton_sd.isEnabled()
+    calc._pulsar("#sd")
+    assert calc.pantalla.text() == "2.82843"
+
+
+def test_calculadora_sigue_desde_el_resultado(ventana):
+    calc = panel(ventana, "calculadora")
+    calc.pantalla.setText("1/3")
+    calc.calcular()
+    for orden in ["+", "1", "#fraccion", "6", "#calcular"]:
+        calc._pulsar(orden)
+    assert calc.pantalla.text() == "1/2"
+
+
+def _encender(paso_a_paso):
+    paso_a_paso.boton.setChecked(True)
+    paso_a_paso._alternar()
+
+
+def _apagar(paso_a_paso):
+    paso_a_paso.boton.setChecked(False)
+    paso_a_paso._alternar()
+
+
+def test_calculadora_paso_a_paso(ventana):
+    calc = panel(ventana, "calculadora")
+    _encender(calc.paso_a_paso)
+    try:
+        calc.pantalla.setText("sqrt(72)")
+        calc.calcular()
+        texto = calc.paso_a_paso.caja.toPlainText()
+        assert "√72 = √(36·2) = √36·√2 = 6√2" in texto
+    finally:
+        _apagar(calc.paso_a_paso)
+    assert not calc.paso_a_paso.caja.isVisible()
+
+
+def test_geometria_paso_a_paso(ventana):
+    geo = panel(ventana, "geometria")
+    geo.buscador.clear()
+    geo.combo_grupo.setCurrentText("Todas")
+    geo.combo_figura.setCurrentText("Cilindro")
+    geo._campos["r"].setText("5 cm")
+    geo._campos["h"].setText("10 cm")
+    _encender(geo.paso_a_paso)
+    try:
+        geo.calcular(silencioso=True)
+        assert "V = π·r²·h = π·5²·10 = 250π ≈ 785.398 cm³" in geo.paso_a_paso.caja.toPlainText()
+    finally:
+        _apagar(geo.paso_a_paso)
+
+
+def test_conversiones_paso_a_paso(ventana):
+    conv = panel(ventana, "conversiones")
+    conv.combo_grupo.setCurrentText("Básicas")
+    conv.combo_categoria.setCurrentText("Longitud")
+    conv.combo_origen.setCurrentIndex(conv.combo_origen.findData("km"))
+    conv.combo_destino.setCurrentIndex(conv.combo_destino.findData("m"))
+    conv.campo_valor.setText("5")
+    _encender(conv.paso_a_paso)
+    try:
+        conv._convertir_en_vivo()
+        assert "5 km × 1000 = 5000 m" in conv.paso_a_paso.caja.toPlainText()
+    finally:
+        _apagar(conv.paso_a_paso)

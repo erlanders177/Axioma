@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from ..core import pasos_cuentas
 from ..core import unidades as uni
 from ..core.config import config
 from ..core.formato import formatear
@@ -16,6 +17,7 @@ from .comunes import (
     CampoNumerico, TablaResultados, aviso, boton, etiqueta,
     separador, tarjeta,
 )
+from .paso_a_paso import PasoAPaso
 
 
 class PanelConversiones(PanelModulo):
@@ -121,11 +123,15 @@ class PanelConversiones(PanelModulo):
         self.resultado.setMinimumHeight(28)
         col.addWidget(self.resultado)
 
+        self.paso_a_paso = PasoAPaso("conversiones", self._pasos, alto_maximo=180)
+
         acciones = QHBoxLayout()
         acciones.addWidget(boton("Convertir y guardar", "primario", self.convertir))
         acciones.addWidget(boton("Copiar resultado", "", self._copiar))
+        acciones.addWidget(self.paso_a_paso.boton)
         acciones.addStretch()
         col.addLayout(acciones)
+        col.addWidget(self.paso_a_paso.caja)
         columna.addWidget(marco)
 
         # -- tabla con todas las unidades ------------------------------------ #
@@ -231,6 +237,16 @@ class PanelConversiones(PanelModulo):
         self.tabla.mostrar([
             (unidad.etiqueta, formatear(v, decimales), v) for unidad, v in filas
         ])
+        self.paso_a_paso.refrescar()
+
+    def _pasos(self) -> list | None:
+        """De dónde sale la conversión: el factor, o la fórmula si es temperatura."""
+        datos = self._datos_actuales()
+        if datos is None:
+            return None
+        valor, origen, destino, categoria = datos
+        return pasos_cuentas.pasos_conversion(valor, origen, destino, categoria,
+                                              config["decimales"])
 
     def convertir(self) -> None:
         datos = self._datos_actuales()
@@ -314,4 +330,4 @@ class PanelConversiones(PanelModulo):
             self.campo_valor.poner(float(valor))
 
     def aplicar_paleta(self, paleta) -> None:
-        return
+        self.paso_a_paso.aplicar_paleta(paleta)
